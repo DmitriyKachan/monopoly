@@ -49,6 +49,14 @@ def main():
     config = load_config()
     token = config.get("telegram_token")
     web_app_url = config.get("web_app_url")
+    ws_server_url = config.get("ws_server_url", "")
+    
+    if ws_server_url:
+        param = urllib.parse.urlencode({"ws_server": ws_server_url})
+        if "?" in web_app_url:
+            web_app_url = f"{web_app_url}&{param}"
+        else:
+            web_app_url = f"{web_app_url}?{param}"
     
     print("=" * 60)
     print("   МОНОПОЛІЯ УКРАЇНА - TELEGRAM БОТ ЗАПУСКАЄТЬСЯ")
@@ -85,6 +93,22 @@ def main():
                         text = msg.get("text", "")
                         
                         if text == "/start":
+                            # Load config dynamically to read updated ws_server_url without restart
+                            try:
+                                dynamic_config = load_config()
+                                dynamic_web_app_url = dynamic_config.get("web_app_url")
+                                dynamic_ws_server_url = dynamic_config.get("ws_server_url", "")
+                                
+                                if dynamic_ws_server_url:
+                                    param = urllib.parse.urlencode({"ws_server": dynamic_ws_server_url})
+                                    if "?" in dynamic_web_app_url:
+                                        dynamic_web_app_url = f"{dynamic_web_app_url}&{param}"
+                                    else:
+                                        dynamic_web_app_url = f"{dynamic_web_app_url}?{param}"
+                            except Exception as e:
+                                print(f"Помилка при читанні конфігурації: {e}")
+                                dynamic_web_app_url = web_app_url
+                            
                             welcome_msg = (
                                 f"Вітаємо, {first_name}! 🇺🇦🏦\n\n"
                                 "Ласкаво просимо до Монополії з відомими українськими брендами.\n"
@@ -98,7 +122,7 @@ def main():
                                     [
                                         {
                                             "text": "Грати в Монополію 🏦🎮",
-                                            "web_app": {"url": web_app_url}
+                                            "web_app": {"url": dynamic_web_app_url}
                                         }
                                     ]
                                 ]
