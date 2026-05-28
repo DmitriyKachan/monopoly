@@ -4,12 +4,14 @@
 
 import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
 import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, renderShopScreen, showModal, hideModal } from './ui.js';
-import { startMatchmakingSimulation, BotAI } from './multiplayer.js';
+import { startMatchmakingSimulation, BotAI, MultiplayerManager } from './multiplayer.js';
 import { shopData } from './shop.js';
 
 // Game state instance
 let game = new GameState();
 let isLocalGame = false;
+let isMultiplayerGame = false;
+const mp = new MultiplayerManager();
 let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
 
 // Telegram WebApp Initialization
@@ -112,16 +114,126 @@ function setupBackButton() {
 
 // Menu Click Bindings
 function setupMenuHandlers() {
-    // Quick play
+    // Multiplayer Lobby Screen init
     document.getElementById('btn-quick-play').addEventListener('click', () => {
         isLocalGame = false;
+        isMultiplayerGame = false;
         switchScreen('screen-lobby');
-        runMatchmaking();
+        initLobbyScreen();
+    });
+
+    // Create Room
+    document.getElementById('btn-create-lobby').addEventListener('click', () => {
+        document.getElementById('lobby-modes').style.display = 'none';
+        const activeRoomPanel = document.getElementById('lobby-room-active');
+        activeRoomPanel.style.display = 'flex';
+        
+        document.getElementById('matchmaking-status').innerText = "Підключення до WSS сервера...";
+        
+        mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
+            document.getElementById('matchmaking-status').innerText = "Створення кімнати...";
+            mp.createRoom(userProfile.name, userProfile.avatar);
+        });
+
+        mp.onPlayerUpdateCallback = (players) => {
+            document.getElementById('matchmaking-status').innerText = "Очікування друзів...";
+            document.getElementById('display-room-code').innerText = mp.roomCode;
+            renderLobbyPlayers(players);
+            
+            // Host can start game if >= 2 players
+            const startBtn = document.getElementById('btn-start-multiplayer');
+            if (players.length >= 2) {
+                startBtn.style.display = 'block';
+            } else {
+                startBtn.style.display = 'none';
+            }
+        };
+
+        mp.onGameStartCallback = () => {
+            isMultiplayerGame = true;
+            startNewGame(mp.playersList.map(p => ({
+                name: p.name,
+                isBot: false,
+                avatar: p.avatar,
+                tokenSkin: p.id === 0 ? shopData.equippedToken : 'classic'
+            })));
+        };
+
+        mp.onActionCallback = handleRemoteAction;
+    });
+
+    // Join Room Init Panel
+    document.getElementById('btn-join-lobby-init').addEventListener('click', () => {
+        document.getElementById('lobby-modes').style.display = 'none';
+        document.getElementById('lobby-code-input').style.display = 'flex';
+    });
+
+    // Cancel Join Panel
+    document.getElementById('btn-cancel-join').addEventListener('click', () => {
+        document.getElementById('lobby-code-input').style.display = 'none';
+        document.getElementById('lobby-modes').style.display = 'flex';
+    });
+
+    // Join Room Confirm
+    document.getElementById('btn-join-lobby-confirm').addEventListener('click', () => {
+        const codeInput = document.getElementById('input-room-code');
+        const code = codeInput.value.trim();
+        if (code.length !== 4) {
+            alert("Код кімнати має складатися з 4 цифр!");
+            return;
+        }
+
+        document.getElementById('lobby-code-input').style.display = 'none';
+        const activeRoomPanel = document.getElementById('lobby-room-active');
+        activeRoomPanel.style.display = 'flex';
+        
+        document.getElementById('matchmaking-status').innerText = `Підключення до кімнати ${code}...`;
+
+        mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
+            mp.joinRoom(code, userProfile.name, userProfile.avatar);
+        });
+
+        mp.onPlayerUpdateCallback = (players) => {
+            document.getElementById('matchmaking-status').innerText = "Очікування старту від організатора...";
+            document.getElementById('display-room-code').innerText = mp.roomCode;
+            renderLobbyPlayers(players);
+            // Guest cannot start game
+            document.getElementById('btn-start-multiplayer').style.display = 'none';
+        };
+
+        mp.onGameStartCallback = () => {
+            isMultiplayerGame = true;
+            startNewGame(mp.playersList.map(p => ({
+                name: p.name,
+                isBot: false,
+                avatar: p.avatar,
+                tokenSkin: p.id === mp.playerId ? shopData.equippedToken : 'classic'
+            })));
+        };
+
+        mp.onActionCallback = handleRemoteAction;
+    });
+
+    // Start Multiplayer Button click (Host only)
+    document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
+        mp.startGame();
+    });
+
+    // Bot Lobby Offline Play
+    document.getElementById('btn-bots-lobby').addEventListener('click', () => {
+        document.getElementById('lobby-modes').style.display = 'none';
+        const activeRoomPanel = document.getElementById('lobby-room-active');
+        activeRoomPanel.style.display = 'flex';
+        document.getElementById('lobby-radar-container').style.display = 'block';
+        document.getElementById('display-room-code').innerText = "OFFLINE";
+        
+        runBotsMatchmaking();
     });
 
     // Pass & Play
     document.getElementById('btn-pass-play').addEventListener('click', () => {
         isLocalGame = true;
+        isMultiplayerGame = false;
         startNewGame([
             { name: userProfile.name, isBot: false, avatar: userProfile.avatar },
             { name: "Друг 1", isBot: false, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop" },
@@ -132,18 +244,16 @@ function setupMenuHandlers() {
     // Invite friends
     document.getElementById('btn-invite-friends').addEventListener('click', () => {
         if (tg) {
-            // Check if share exists
             tg.shareToStory("https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop", {
                 text: "Зіграй зі мною в українську Монополію в Telegram! 🇺🇦🏦",
                 widget_link: {
-                    url: "https://t.me/monopoly_ua_bot/app",
+                    url: "https://t.me/queuecomfybot/app",
                     name: "Грати зараз"
                 }
             });
         } else {
-            // Standalone Clipboard copy fallback
-            navigator.clipboard.writeText("https://t.me/monopoly_ua_bot/app");
-            showModal("Запросити друзів", "<p>Посилання скопійовано! Надішліть його друзям у Telegram, щоб грати разом.</p>", [
+            navigator.clipboard.writeText("https://t.me/queuecomfybot/app");
+            showModal("Запросити друзів", "<p>Посилання на бота скопійовано! Надішліть його друзям, щоб вони приєдналися.</p>", [
                 { text: "Чудово", class: "btn-primary" }
             ]);
         }
@@ -169,7 +279,14 @@ function setupMenuHandlers() {
     // Exit Game button in GameHUD
     document.getElementById('btn-game-quit').addEventListener('click', () => {
         showModal("Вихід з гри", "<p>Залишити ігрову кімнату?</p>", [
-            { text: "Так, вийти", class: "btn-danger", onClick: () => switchScreen('screen-menu') },
+            { 
+                text: "Так, вийти", 
+                class: "btn-danger", 
+                onClick: () => {
+                    if (isMultiplayerGame) mp.disconnect();
+                    switchScreen('screen-menu');
+                } 
+            },
             { text: "Скасувати", class: "btn-secondary" }
         ]);
     });
@@ -184,9 +301,49 @@ function setupMenuHandlers() {
     });
 }
 
-// simulated matchmaking loading
+// Reset Lobby UI panel state
+function initLobbyScreen() {
+    document.getElementById('lobby-modes').style.display = 'flex';
+    document.getElementById('lobby-code-input').style.display = 'none';
+    document.getElementById('lobby-room-active').style.display = 'none';
+    document.getElementById('lobby-radar-container').style.display = 'none';
+    document.getElementById('btn-start-multiplayer').style.display = 'none';
+    document.getElementById('lobby-players-list').innerHTML = '';
+    
+    if (mp) mp.disconnect();
+}
+
+// Render player list cards in lobby
+function renderLobbyPlayers(players) {
+    const listEl = document.getElementById('lobby-players-list');
+    listEl.innerHTML = '';
+
+    players.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'lobby-player-card';
+        card.innerHTML = `
+            <div class="player-card-info">
+                <img src="${p.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop'}" class="lobby-avatar connected">
+                <span class="lobby-name">${p.name} ${p.name === userProfile.name ? '(Ви)' : ''}</span>
+            </div>
+            <span class="lobby-status-text ready">${p.is_host ? 'Хост' : 'Гравець'}</span>
+        `;
+        listEl.appendChild(card);
+    });
+}
+
+function getWsUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('ws_server')) {
+        return urlParams.get('ws_server');
+    }
+    // Default local PC WebSocket server
+    return "ws://localhost:8765";
+}
+
+// Simulated matchmaking loading
 let matchmakingCancelFn = null;
-function runMatchmaking() {
+function runBotsMatchmaking() {
     const listEl = document.getElementById('lobby-players-list');
     const statusEl = document.getElementById('matchmaking-status');
     
@@ -225,6 +382,7 @@ function runMatchmaking() {
                 allBots.forEach(bot => {
                     setupList.push({ name: bot.name, isBot: true, avatar: bot.avatar });
                 });
+                isMultiplayerGame = false; // bot game is offline
                 startNewGame(setupList);
             }, 1000);
         }
@@ -278,27 +436,44 @@ function handleCellClick(index) {
             isSelf,
             () => {
                 // Upgrade handler
-                if (game.currentPlayerIndex === 0 && !isLocalGame) {
-                    const success = game.upgradeProperty(0, space.id);
-                    if (success) {
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для будівництва філії!");
+                if (isMultiplayerGame) {
+                    if (game.currentPlayerIndex === mp.playerId && isSelf) {
+                        const success = game.upgradeProperty(mp.playerId, space.id);
+                        if (success) {
+                            mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для будівництва філії!");
+                        }
+                    }
+                } else if (!isLocalGame) {
+                    if (game.currentPlayerIndex === 0 && isSelf) {
+                        const success = game.upgradeProperty(0, space.id);
+                        if (success) {
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для будівництва філії!");
+                        }
                     }
                 } else if (isLocalGame) {
                     // In local mode, active player can upgrade their own land
                     const activePIdx = game.currentPlayerIndex;
-                    const success = game.upgradeProperty(activePIdx, space.id);
-                    if (success) {
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для будівництва філії!");
+                    if (isSelf) {
+                        const success = game.upgradeProperty(activePIdx, space.id);
+                        if (success) {
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для будівництва філії!");
+                        }
                     }
                 }
             }
@@ -322,6 +497,9 @@ function handleUserRoll() {
                 onClick: () => {
                     const success = game.tryGetOutJail(activePlayer.id, 'pay');
                     if (success) {
+                        if (isMultiplayerGame) {
+                            mp.sendAction({ type: 'jail_free', method: 'pay', playerId: activePlayer.id });
+                        }
                         renderPlayersHUD(game);
                         updateGameLog(game);
                         rollBtn.disabled = false; // allow to roll movement now!
@@ -333,6 +511,9 @@ function handleUserRoll() {
                 class: "btn-secondary",
                 onClick: () => {
                     const rollResult = game.tryGetOutJail(activePlayer.id, 'roll');
+                    if (isMultiplayerGame) {
+                        mp.sendAction({ type: 'jail_free', method: 'roll', playerId: activePlayer.id, result: rollResult });
+                    }
                     renderPlayersHUD(game);
                     updateGameLog(game);
                     
@@ -359,11 +540,16 @@ function handleUserRoll() {
     const { d1, d2, sum } = game.rollDice();
     game.log(`${activePlayer.name} кинув кубики: ${d1}:${d2}`, 'system');
     
+    if (isMultiplayerGame) {
+        mp.sendAction({ type: 'roll', d1, d2, sum });
+    }
+
+    const fromPos = activePlayer.position;
+    game.movePlayer(activePlayer.id, sum);
+
     animateDiceRoll(d1, d2, () => {
-        const fromPos = activePlayer.position;
         // Start movement animation
         animatePlayerMovement(game, activePlayer.id, fromPos, sum, () => {
-            // Passed start payout checking is inside game.js, but let's draw HUD updates
             renderPlayersHUD(game);
             
             // Resolve Landing Cell
@@ -381,7 +567,12 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
     if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
         if (space.owner === null) {
             // Unowned: Offer purchase
-            if (player.isBot) return; // bot handled in multiplayer.js
+            if (player.isBot) return;
+
+            if (isMultiplayerGame && playerId !== mp.playerId) {
+                // Remote player landed on unowned property. Just wait for their action.
+                return;
+            }
 
             showPropertyModal(
                 space,
@@ -389,6 +580,9 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
                     // Buy confirm
                     const success = game.purchaseProperty(playerId, spaceId);
                     if (success) {
+                        if (isMultiplayerGame) {
+                            mp.sendAction({ type: 'buy', playerId, spaceId });
+                        }
                         renderBoard(game, handleCellClick);
                         renderPlayersHUD(game);
                         updateGameLog(game);
@@ -407,42 +601,87 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
         } else if (space.owner !== playerId) {
             // Pay rent
             const rent = game.payRent(playerId, spaceId, diceSum);
+            if (isMultiplayerGame && playerId === mp.playerId) {
+                mp.sendAction({ type: 'pay_rent', playerId, spaceId });
+            }
             renderPlayersHUD(game);
             updateGameLog(game);
             
             if (player.money < 0) {
                 // Debt/Bankruptcy flow
-                resolveUserDebt(playerId, rent);
+                if (isMultiplayerGame) {
+                    if (playerId === mp.playerId) {
+                        resolveUserDebt(playerId, rent);
+                    }
+                } else {
+                    resolveUserDebt(playerId, rent);
+                }
             } else {
-                endTurnBtn.disabled = false;
+                if (isMultiplayerGame) {
+                    if (playerId === mp.playerId) endTurnBtn.disabled = false;
+                } else {
+                    endTurnBtn.disabled = false;
+                }
             }
         } else {
             // Own property landed
-            endTurnBtn.disabled = false;
+            if (isMultiplayerGame) {
+                if (playerId === mp.playerId) endTurnBtn.disabled = false;
+            } else {
+                endTurnBtn.disabled = false;
+            }
         }
     } else if (space.type === SPACE_TYPES.FREE_PARKING) {
         // Collect donation
         const claimed = game.claimFreeParking(playerId);
+        if (isMultiplayerGame && claimed > 0 && playerId === mp.playerId) {
+            mp.sendAction({ type: 'claim_parking', playerId, amount: claimed });
+        }
         renderPlayersHUD(game);
         updateGameLog(game);
-        endTurnBtn.disabled = false;
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) endTurnBtn.disabled = false;
+        } else {
+            endTurnBtn.disabled = false;
+        }
     } else if (space.type === SPACE_TYPES.GO_TO_JAIL) {
         // Go to jail
         game.sendToJail(playerId);
+        if (isMultiplayerGame && playerId === mp.playerId) {
+            mp.sendAction({ type: 'go_to_jail', playerId });
+        }
         updatePlayerTokens(game);
         renderPlayersHUD(game);
         updateGameLog(game);
-        endTurnBtn.disabled = false;
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) endTurnBtn.disabled = false;
+        } else {
+            endTurnBtn.disabled = false;
+        }
     } else if (space.type === SPACE_TYPES.CHANCE) {
         // Draw Chance Card
-        const card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
-        
-        showChanceModal(card.text, () => {
-            applyChanceCardAction(playerId, card);
-        });
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) {
+                const cardIndex = Math.floor(Math.random() * CHANCE_CARDS.length);
+                const card = CHANCE_CARDS[cardIndex];
+                mp.sendAction({ type: 'chance_card', playerId, cardIndex });
+                showChanceModal(card.text, () => {
+                    applyChanceCardAction(playerId, card);
+                });
+            }
+        } else {
+            const card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
+            showChanceModal(card.text, () => {
+                applyChanceCardAction(playerId, card);
+            });
+        }
     } else {
         // Start or jail visiting
-        endTurnBtn.disabled = false;
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) endTurnBtn.disabled = false;
+        } else {
+            endTurnBtn.disabled = false;
+        }
     }
 }
 
@@ -476,9 +715,19 @@ function applyChanceCardAction(playerId, card) {
     updateGameLog(game);
 
     if (player.money < 0) {
-        resolveUserDebt(playerId, 0);
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) {
+                resolveUserDebt(playerId, 0);
+            }
+        } else {
+            resolveUserDebt(playerId, 0);
+        }
     } else {
-        endTurnBtn.disabled = false;
+        if (isMultiplayerGame) {
+            if (playerId === mp.playerId) endTurnBtn.disabled = false;
+        } else {
+            endTurnBtn.disabled = false;
+        }
     }
 }
 
@@ -550,6 +799,10 @@ function resolveUserDebt(playerId, rentAmount) {
                     }
                     game.declareBankruptcy(playerId, beneficiaryId);
                     
+                    if (isMultiplayerGame) {
+                        mp.sendAction({ type: 'bankrupt', playerId, beneficiaryId });
+                    }
+                    
                     renderBoard(game, handleCellClick);
                     renderPlayersHUD(game);
                     updateGameLog(game);
@@ -569,6 +822,9 @@ function resolveUserDebt(playerId, rentAmount) {
         branchesToSell.forEach(s => {
             document.getElementById(`btn-sell-branch-${s.id}`).onclick = () => {
                 game.sellBranch(s.id);
+                if (isMultiplayerGame) {
+                    mp.sendAction({ type: 'sell_branch', playerId, spaceId: s.id });
+                }
                 renderBoard(game, handleCellClick);
                 renderPlayersHUD(game);
                 updateGameLog(game);
@@ -600,6 +856,10 @@ function handleUserEndTurn() {
         return;
     }
 
+    if (isMultiplayerGame) {
+        mp.sendAction({ type: 'end_turn', playerId: game.currentPlayerIndex });
+    }
+
     game.nextTurn();
     renderPlayersHUD(game);
     updateGameLog(game);
@@ -618,6 +878,23 @@ function processNextTurn() {
     
     // UI marker update
     document.getElementById('current-player-name').innerText = activePlayer.name;
+
+    if (isMultiplayerGame) {
+        // Disable User controls by default
+        document.getElementById('btn-roll-dice').disabled = true;
+        document.getElementById('btn-end-turn').disabled = true;
+
+        if (activePlayer.id === mp.playerId) {
+            // Enable local player controls
+            document.getElementById('btn-roll-dice').disabled = false;
+            game.log(`Ваш хід (${activePlayer.name}). Кидайте кубики!`);
+            updateGameLog(game);
+        } else {
+            game.log(`Очікування ходу гравця ${activePlayer.name}...`);
+            updateGameLog(game);
+        }
+        return;
+    }
 
     if (activePlayer.isBot) {
         // Disable User controls
@@ -753,4 +1030,135 @@ function loadLeaderboard(tab = 'weekly') {
         `;
         listEl.appendChild(row);
     });
+}
+
+// Handler for remote events sent over WebSockets
+function handleRemoteAction(action) {
+    console.log("Remote action received:", action);
+    const endTurnBtn = document.getElementById('btn-end-turn');
+    
+    if (!game || !game.players || game.players.length === 0) return;
+
+    const playerId = action.playerId !== undefined ? action.playerId : game.currentPlayerIndex;
+    const player = game.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    switch (action.type) {
+        case 'roll':
+            game.log(`${player.name} кинув кубики: ${action.d1}:${action.d2}`, 'system');
+            const fromPos = player.position;
+            game.movePlayer(playerId, action.sum);
+            animateDiceRoll(action.d1, action.d2, () => {
+                animatePlayerMovement(game, playerId, fromPos, action.sum, () => {
+                    renderPlayersHUD(game);
+                    resolveLandingSpace(playerId, player.position, action.sum);
+                });
+            });
+            break;
+
+        case 'buy':
+            game.purchaseProperty(playerId, action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'upgrade':
+            game.upgradeProperty(playerId, action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'pay_rent':
+            // Automatically processed inside resolveLandingSpace
+            break;
+
+        case 'claim_parking':
+            game.claimFreeParking(playerId);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'jail_free':
+            if (action.method === 'pay') {
+                player.money -= 500;
+                game.freeParkingCash += 500;
+                player.inJail = false;
+                player.jailTurns = 0;
+                game.log(`${player.name} задонатив ₴500 волонтерам і вийшов з укриття`, 'gain');
+                renderPlayersHUD(game);
+                updateGameLog(game);
+            } else if (action.method === 'roll') {
+                const res = action.result;
+                if (res.success) {
+                    player.inJail = false;
+                    player.jailTurns = 0;
+                    if (res.forced) {
+                        player.money -= 500;
+                        game.freeParkingCash += 500;
+                        game.log(`${player.name} відбув тривогу 2 ходи, сплатив автоматичний збір ₴500 і вийшов з укриття`, 'gain');
+                    } else {
+                        game.log(`${player.name} викинув дубль (${res.d1}:${res.d2}) та вийшов з укриття безкоштовно!`, 'gain');
+                    }
+                    animateDiceRoll(res.d1, res.d2, () => {
+                        game.movePlayer(playerId, res.sum);
+                        updatePlayerTokens(game);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        resolveLandingSpace(playerId, player.position, res.sum);
+                    });
+                } else {
+                    player.jailTurns++;
+                    game.log(`${player.name} кинув кубики (${res.d1}:${res.d2}) та не викинув дубль. Залишається в укритті`, 'system');
+                    animateDiceRoll(res.d1, res.d2, () => {
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                    });
+                }
+            }
+            break;
+
+        case 'chance_card':
+            const card = CHANCE_CARDS[action.cardIndex];
+            showChanceModal(`${player.name} витягнув картку Шанс:\n\n${card.text}`, () => {
+                applyChanceCardAction(playerId, card);
+            });
+            break;
+
+        case 'sell_branch':
+            game.sellBranch(action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'sell_property':
+            game.sellProperty(action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'bankrupt':
+            game.declareBankruptcy(playerId, action.beneficiaryId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            if (game.isGameOver) {
+                showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+            }
+            break;
+
+        case 'end_turn':
+            game.nextTurn();
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            if (game.isGameOver) {
+                showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+            } else {
+                processNextTurn();
+            }
+            break;
+    }
 }

@@ -38,8 +38,9 @@ export const SPACES_DATA = [
         type: SPACE_TYPES.PROPERTY,
         group: COLOR_GROUPS.BROWN,
         price: 600,
-        rent: [50, 200, 500, 1000, 2000], // [Base, 1 Branch, 2, 3, 4/SuperBranch]
-        branchCost: 500
+        rent: [50, 200, 500, 1000, 2000],
+        branchCost: 500,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#e11d48"/><circle cx="50" cy="50" r="30" fill="#facc15"/><text x="50" y="65" font-family="'Outfit', sans-serif" font-size="42" font-weight="900" text-anchor="middle" fill="#1e293b">А</text></svg>`
     },
     {
         id: 2,
@@ -48,7 +49,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.BROWN,
         price: 600,
         rent: [50, 200, 500, 1000, 2000],
-        branchCost: 500
+        branchCost: 500,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="none" stroke="#ea580c" stroke-width="10"/><path d="M32,55 Q50,75 68,55" fill="none" stroke="#ea580c" stroke-width="8" stroke-linecap="round"/><circle cx="35" cy="40" r="5" fill="#ea580c"/><circle cx="65" cy="40" r="5" fill="#ea580c"/></svg>`
     },
     {
         id: 3,
@@ -60,7 +62,8 @@ export const SPACES_DATA = [
         name: "Укрзалізниця",
         type: SPACE_TYPES.STATION,
         price: 2000,
-        baseRent: 500
+        baseRent: 500,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20,45 L80,45 L70,30 L30,30 Z M25,45 L25,75 L75,75 L75,45 Z M35,62 C35,66 40,66 40,62 Z M65,62 C65,66 60,66 60,62 Z" fill="none" stroke="#94a3b8" stroke-width="8" stroke-linejoin="round"/></svg>`
     },
     {
         id: 5,
@@ -75,7 +78,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.LIGHTBLUE,
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
-        branchCost: 700
+        branchCost: 700,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#22c55e"/><circle cx="36" cy="43" r="5" fill="#fff"/><circle cx="64" cy="43" r="5" fill="#fff"/><path d="M32,60 Q50,75 68,60" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>`
     },
     {
         id: 7,
@@ -84,7 +88,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.LIGHTBLUE,
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
-        branchCost: 700
+        branchCost: 700,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="25" width="50" height="50" rx="12" fill="none" stroke="#a855f7" stroke-width="10"/><circle cx="40" cy="50" r="6" fill="#a855f7"/><circle cx="60" cy="50" r="6" fill="#a855f7"/></svg>`
     },
     {
         id: 8,
@@ -93,7 +98,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.RED,
         price: 1400,
         rent: [120, 480, 1200, 2400, 4200],
-        branchCost: 1000
+        branchCost: 1000,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,68 L30,35 L42,48 L58,48 L70,35 L70,68 Z" fill="none" stroke="#ef4444" stroke-width="8" stroke-linejoin="round"/><circle cx="42" cy="56" r="4" fill="#ef4444"/><circle cx="58" cy="56" r="4" fill="#ef4444"/><path d="M46,61 Q50,64 54,61" fill="none" stroke="#ef4444" stroke-width="3"/></svg>`
     },
     {
         id: 9,
@@ -102,7 +108,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.RED,
         price: 1600,
         rent: [140, 560, 1400, 2800, 4800],
-        branchCost: 1000
+        branchCost: 1000,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M25,20 H75 V35 H25 Z M25,45 H75 V75 C75,80 70,80 70,80 H30 C25,80 25,75 25,75 Z" fill="none" stroke="#10b981" stroke-width="8" stroke-linejoin="round"/></svg>`
     },
     {
         id: 10,
@@ -117,7 +124,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.ORANGE,
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
-        branchCost: 1200
+        branchCost: 1200,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="22" y="22" width="56" height="56" rx="8" fill="none" stroke="#ef4444" stroke-width="10"/><path d="M22,50 H78 M50,22 V78" stroke="#ef4444" stroke-width="8"/></svg>`
     },
     {
         id: 12,
@@ -126,7 +134,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.ORANGE,
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
-        branchCost: 1200
+        branchCost: 1200,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="none" stroke="#eab308" stroke-width="8"/><path d="M30,50 C30,35 70,35 70,50 C70,65 40,65 40,55" fill="none" stroke="#eab308" stroke-width="8"/></svg>`
     },
     {
         id: 13,
@@ -140,7 +149,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.YELLOW,
         price: 2200,
         rent: [200, 800, 2000, 4000, 6000],
-        branchCost: 1500
+        branchCost: 1500,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50,15 L58,38 H82 L62,52 L70,75 L50,60 L30,75 L38,52 L18,38 H42 Z" fill="#3b82f6"/></svg>`
     },
     {
         id: 15,
@@ -155,7 +165,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.YELLOW,
         price: 2600,
         rent: [240, 960, 2400, 4800, 7200],
-        branchCost: 1500
+        branchCost: 1500,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22,62 L50,30 L78,62 M32,52 V78 H68 V52" fill="none" stroke="#3b82f6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><text x="50" y="65" font-family="'Outfit', sans-serif" font-size="28" font-weight="900" text-anchor="middle" fill="#3b82f6">Е</text></svg>`
     },
     {
         id: 17,
@@ -164,14 +175,16 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.GREEN,
         price: 2800,
         rent: [260, 1000, 2600, 5200, 8000],
-        branchCost: 1800
+        branchCost: 1800,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="38" fill="none" stroke="#22c55e" stroke-width="8"/><path d="M30,35 L42,65 L50,48 L58,65 L70,35" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     },
     {
         id: 18,
         name: "Дія",
         type: SPACE_TYPES.UTILITY,
         price: 1500,
-        multiplier: 100 // 100x dice roll
+        multiplier: 100,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="25" width="50" height="50" rx="6" fill="#000"/><text x="50" y="58" font-family="'Outfit', sans-serif" font-size="24" font-weight="800" text-anchor="middle" fill="#fff">дія</text></svg>`
     },
     {
         id: 19,
@@ -180,7 +193,8 @@ export const SPACES_DATA = [
         group: COLOR_GROUPS.GREEN,
         price: 3200,
         rent: [350, 1400, 3500, 7000, 10000],
-        branchCost: 2000
+        branchCost: 2000,
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,25 L75,50 L30,75 Z" fill="#6366f1"/></svg>`
     }
 ];
 

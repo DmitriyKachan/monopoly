@@ -61,11 +61,19 @@ export function renderBoard(gameState, onCellClick) {
             cell.appendChild(colorBar);
         }
 
-        // 2. Name
-        const nameEl = document.createElement('div');
-        nameEl.className = 'cell-name';
-        nameEl.innerText = space.name;
-        cell.appendChild(nameEl);
+        // 2. Logo SVG or Name text
+        let nameEl;
+        if (space.logoSvg) {
+            const logoEl = document.createElement('div');
+            logoEl.className = 'cell-logo';
+            logoEl.innerHTML = space.logoSvg;
+            cell.appendChild(logoEl);
+        } else {
+            nameEl = document.createElement('div');
+            nameEl.className = 'cell-name';
+            nameEl.innerText = space.name;
+            cell.appendChild(nameEl);
+        }
 
         // 3. Icons for corners
         if (space.type === SPACE_TYPES.START) {

@@ -85,21 +85,60 @@
         <div id="screen-lobby" class="screen">
             <div class="lobby-header">
                 <button class="btn-back" id="btn-lobby-back"><i class="fa-solid fa-arrow-left"></i></button>
-                <h2>Пошук суперників</h2>
+                <h2 id="lobby-title">Ігрова кімната</h2>
             </div>
             <div class="lobby-content">
-                <div class="matchmaking-container">
-                    <div class="matchmaking-radar">
-                        <div class="radar-circle circle-1"></div>
-                        <div class="radar-circle circle-2"></div>
-                        <div class="radar-circle circle-3"></div>
-                        <div class="radar-scanner"></div>
-                        <div class="radar-center"><i class="fa-solid fa-satellite-dish"></i></div>
-                    </div>
-                    <p class="matchmaking-status" id="matchmaking-status">Підключення до лобі...</p>
+                <!-- 1. MODE SELECTION -->
+                <div id="lobby-modes" class="lobby-modes-container">
+                    <button class="btn btn-primary" id="btn-create-lobby">
+                        <span class="btn-icon"><i class="fa-solid fa-plus"></i></span>
+                        <span class="btn-text">Створити приватну кімнату</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-join-lobby-init">
+                        <span class="btn-icon"><i class="fa-solid fa-right-to-bracket"></i></span>
+                        <span class="btn-text">Приєднатися за кодом</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-bots-lobby">
+                        <span class="btn-icon"><i class="fa-solid fa-robot"></i></span>
+                        <span class="btn-text">Гра з ботами (офлайн)</span>
+                    </button>
                 </div>
-                <div class="lobby-players" id="lobby-players-list">
-                    <!-- Players dynamically rendered here -->
+
+                <!-- 2. JOIN CODE INPUT -->
+                <div id="lobby-code-input" class="lobby-sub-panel" style="display: none; margin: auto 0;">
+                    <p class="lobby-help-text">Введіть 4-значний код кімнати вашого друга:</p>
+                    <input type="text" id="input-room-code" placeholder="Код (напр. 1234)" maxlength="4" class="lobby-input">
+                    <button class="btn btn-primary" id="btn-join-lobby-confirm">Приєднатися</button>
+                    <button class="btn btn-text-only" id="btn-cancel-join">Назад</button>
+                </div>
+
+                <!-- 3. ACTIVE ROOM PANEL -->
+                <div id="lobby-room-active" class="lobby-sub-panel" style="display: none; flex: 1; flex-direction: column; justify-content: space-between; height: 100%;">
+                    <div>
+                        <div class="room-code-display" style="margin-bottom: 1rem;">
+                            Код кімнати: <span id="display-room-code" class="text-yellow">----</span>
+                        </div>
+                        
+                        <div class="matchmaking-container" id="lobby-radar-container" style="display: none; margin: 1rem 0;">
+                            <div class="matchmaking-radar" style="width: 100px; height: 100px;">
+                                <div class="radar-circle circle-1" style="width: 40px; height: 40px;"></div>
+                                <div class="radar-circle circle-2" style="width: 70px; height: 70px;"></div>
+                                <div class="radar-circle circle-3" style="width: 100px; height: 100px;"></div>
+                                <div class="radar-scanner" style="width: 50px; height: 50px;"></div>
+                                <div class="radar-center" style="font-size: 1.2rem;"><i class="fa-solid fa-satellite-dish"></i></div>
+                            </div>
+                        </div>
+
+                        <p class="matchmaking-status" id="matchmaking-status">Очікування гравців...</p>
+                        
+                        <div class="lobby-players" id="lobby-players-list">
+                            <!-- Players dynamically rendered here -->
+                        </div>
+                    </div>
+
+                    <div class="lobby-actions" style="margin-top: 1.5rem;">
+                        <button class="btn btn-primary" id="btn-start-multiplayer" style="display: none;">Розпочати гру 🎮</button>
+                    </div>
                 </div>
             </div>
         </div>
