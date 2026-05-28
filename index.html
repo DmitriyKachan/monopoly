@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Монополія Україна</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- SPLASH SCREEN -->
+        <div id="screen-splash" class="screen active">
+            <div class="splash-content">
+                <div class="logo-container">
+                    <span class="logo-icon"><i class="fa-solid fa-hotel"></i></span>
+                    <h1 class="logo-title">МОНОПОЛІЯ</h1>
+                    <p class="logo-subtitle">УКРАЇНСЬКІ БРЕНДИ</p>
+                </div>
+                <div class="spinner"></div>
+                <p class="splash-loading-text">Завантаження бізнес-імперії...</p>
+            </div>
+        </div>
+
+        <!-- MAIN MENU SCREEN -->
+        <div id="screen-menu" class="screen">
+            <div class="menu-header">
+                <div class="user-pill" id="user-profile">
+                    <img id="user-avatar" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" alt="Avatar">
+                    <div class="user-info">
+                        <span id="user-name" class="user-name">Гість</span>
+                        <span id="user-rank" class="user-rank">Магнат початківець</span>
+                    </div>
+                </div>
+                <div class="currency-pill">
+                    <span class="star-count"><i class="fa-solid fa-star text-star"></i> <span id="stars-balance">250</span></span>
+                </div>
+            </div>
+
+            <div class="menu-body">
+                <div class="menu-hero-card">
+                    <h2>Побудуй свою імперію</h2>
+                    <p>Купуй АТБ, Нову Пошту та Монобанк. Розори друзів та стань найбагатшим українцем!</p>
+                </div>
+
+                <div class="menu-buttons">
+                    <button class="btn btn-primary" id="btn-quick-play">
+                        <span class="btn-icon"><i class="fa-solid fa-globe"></i></span>
+                        <span class="btn-text">Швидка Гра (Онлайн)</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-pass-play">
+                        <span class="btn-icon"><i class="fa-solid fa-users"></i></span>
+                        <span class="btn-text">Гра з Другом (Pass & Play)</span>
+                    </button>
+                    <button class="btn btn-secondary" id="btn-invite-friends">
+                        <span class="btn-icon"><i class="fa-solid fa-share-nodes"></i></span>
+                        <span class="btn-text">Запросити друзів з TG</span>
+                    </button>
+                    <div class="menu-row">
+                        <button class="btn btn-accent" id="btn-open-shop">
+                            <span class="btn-icon"><i class="fa-solid fa-shop"></i></span>
+                            <span class="btn-text">Магазин ⭐️</span>
+                        </button>
+                        <button class="btn btn-accent" id="btn-open-ranks">
+                            <span class="btn-icon"><i class="fa-solid fa-trophy"></i></span>
+                            <span class="btn-text">Рейтинг</span>
+                        </button>
+                    </div>
+                    <button class="btn btn-text-only" id="btn-open-rules">
+                        <span><i class="fa-solid fa-book-open"></i> Правила гри</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOBBY SCREEN -->
+        <div id="screen-lobby" class="screen">
+            <div class="lobby-header">
+                <button class="btn-back" id="btn-lobby-back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2>Пошук суперників</h2>
+            </div>
+            <div class="lobby-content">
+                <div class="matchmaking-container">
+                    <div class="matchmaking-radar">
+                        <div class="radar-circle circle-1"></div>
+                        <div class="radar-circle circle-2"></div>
+                        <div class="radar-circle circle-3"></div>
+                        <div class="radar-scanner"></div>
+                        <div class="radar-center"><i class="fa-solid fa-satellite-dish"></i></div>
+                    </div>
+                    <p class="matchmaking-status" id="matchmaking-status">Підключення до лобі...</p>
+                </div>
+                <div class="lobby-players" id="lobby-players-list">
+                    <!-- Players dynamically rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME BOARD SCREEN -->
+        <div id="screen-game" class="screen">
+            <!-- Game HUD Header -->
+            <div class="game-hud-header">
+                <button class="btn-game-exit" id="btn-game-quit" title="Вийти"><i class="fa-solid fa-house-chimney"></i></button>
+                <div class="game-turn-indicator" id="turn-indicator">
+                    Черга: <span id="current-player-name">Гравець</span>
+                </div>
+                <div class="game-stats-toggle" id="btn-toggle-stats"><i class="fa-solid fa-chart-simple"></i></div>
+            </div>
+
+            <!-- Main Interactive Area -->
+            <div class="game-main-area">
+                <!-- The 6x6 Monopoly Board -->
+                <div class="monopoly-board-wrapper">
+                    <div class="monopoly-board" id="board">
+                        <!-- 20 Spaces will be dynamically rendered here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Players HUD (Bottom/Sidebar Panel) -->
+            <div class="game-players-hud" id="game-players-hud">
+                <!-- Players money cards go here -->
+            </div>
+
+            <!-- Dashboard / Controls Area -->
+            <div class="game-dashboard" id="game-dashboard">
+                <div class="dice-area">
+                    <div class="dice-wrapper">
+                        <div class="die" id="die-1" data-value="1">
+                            <span class="dot"></span>
+                        </div>
+                        <div class="die" id="die-2" data-value="1">
+                            <span class="dot"></span>
+                        </div>
+                    </div>
+                    <div class="dice-sum-display" id="dice-sum-display">0</div>
+                </div>
+
+                <div class="control-actions">
+                    <button class="btn btn-primary btn-roll" id="btn-roll-dice">Кинути кубики</button>
+                    <button class="btn btn-secondary btn-end-turn" id="btn-end-turn" disabled>Завершити хід</button>
+                </div>
+
+                <!-- Event feed / Game Log -->
+                <div class="game-log-container">
+                    <div class="game-log-title"><i class="fa-solid fa-clock-rotate-left"></i> Події гри</div>
+                    <div class="game-log" id="game-log">
+                        <div class="log-entry system">Гра розпочалась! Кидайте кубики.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHOP SCREEN (Monetization Hub) -->
+        <div id="screen-shop" class="screen">
+            <div class="shop-header">
+                <button class="btn-back" id="btn-shop-back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2>Магазин Магната</h2>
+                <div class="stars-badge">
+                    <i class="fa-solid fa-star text-star"></i> <span id="shop-stars-balance">250</span>
+                </div>
+            </div>
+            <div class="shop-content">
+                <div class="shop-intro">
+                    <p>Купуй преміальні скіни для кубиків та унікальні фішки за зірки Telegram! ⭐️</p>
+                </div>
+                
+                <h3 class="shop-section-title">Фішки Гравця</h3>
+                <div class="shop-grid" id="tokens-shop-grid">
+                    <!-- Tokens items will be rendered dynamically -->
+                </div>
+
+                <h3 class="shop-section-title">Скіни для Кубиків</h3>
+                <div class="shop-grid" id="dice-shop-grid">
+                    <!-- Dice skins will be rendered dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- LEADERBOARD SCREEN -->
+        <div id="screen-leaderboard" class="screen">
+            <div class="leaderboard-header">
+                <button class="btn-back" id="btn-leaderboard-back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2>Рейтинг Магнатів</h2>
+            </div>
+            <div class="leaderboard-tabs">
+                <div class="leaderboard-tab active" data-tab="weekly">Тиждень</div>
+                <div class="leaderboard-tab" data-tab="alltime">За весь час</div>
+            </div>
+            <div class="leaderboard-content">
+                <div class="leaderboard-podium">
+                    <div class="podium-item second">
+                        <div class="podium-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&auto=format&fit=crop" class="podium-avatar">
+                            <span class="podium-rank-num">2</span>
+                        </div>
+                        <span class="podium-name">@olga_kiev</span>
+                        <span class="podium-worth">₴28.4K</span>
+                    </div>
+                    <div class="podium-item first">
+                        <div class="podium-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&auto=format&fit=crop" class="podium-avatar">
+                            <span class="podium-rank-num"><i class="fa-solid fa-crown text-gold"></i></span>
+                        </div>
+                        <span class="podium-name">@taras_capital</span>
+                        <span class="podium-worth">₴42.1K</span>
+                    </div>
+                    <div class="podium-item third">
+                        <div class="podium-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop" class="podium-avatar">
+                            <span class="podium-rank-num">3</span>
+                        </div>
+                        <span class="podium-name">@maks_tg</span>
+                        <span class="podium-worth">₴23.9K</span>
+                    </div>
+                </div>
+
+                <div class="leaderboard-list" id="leaderboard-list">
+                    <!-- Standard list rows will be rendered dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- RULES SCREEN -->
+        <div id="screen-rules" class="screen">
+            <div class="rules-header">
+                <button class="btn-back" id="btn-rules-back"><i class="fa-solid fa-arrow-left"></i></button>
+                <h2>Правила Монополії</h2>
+            </div>
+            <div class="rules-content">
+                <div class="rule-card">
+                    <h3><i class="fa-solid fa-circle-nodes text-accent"></i> Швидкі сесії (6x6)</h3>
+                    <p>Ігрове поле складається з 20 клітинок. Це зменшує час гри до 10-15 хвилин та ідеально підходить для гри на ходу.</p>
+                </div>
+                <div class="rule-card">
+                    <h3><i class="fa-solid fa-store text-accent"></i> Будівництво філій</h3>
+                    <p>Ви можете купувати філії компаній відразу після придбання поля. Не обов'язково чекати на збір всієї кольорової групи! Проте наявність всіх брендів одного кольору подвоює базову ренту.</p>
+                </div>
+                <div class="rule-card">
+                    <h3><i class="fa-solid fa-shield-halved text-accent"></i> Укриття (Тюрма)</h3>
+                    <p>Потрапивши в Укриття (Повітряна тривога), ви пропускаєте до 2-х ходів або сплачуєте донат волонтерам у розмірі ₴500 для виходу раніше.</p>
+                </div>
+                <div class="rule-card">
+                    <h3><i class="fa-solid fa-hand-holding-heart text-accent"></i> Фонди підтримки</h3>
+                    <p>Поле "Благодійний Фонд" накопичує податки та штрафи гравців. Гравець, який стає на це поле, забирає весь банк благодійності собі на розвиток бізнесу.</p>
+                </div>
+                <div class="rule-card">
+                    <h3><i class="fa-solid fa-flag-checkered text-accent"></i> Умова перемоги</h3>
+                    <p>Перемагає останній небанкрут. У разі затяжної гри перемагає той, хто має найбільший сумарний капітал (готівка + вартість активів з філіями) після закінчення 20-го раунду.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHARED GLOBAL MODAL CONTAINER -->
+        <div id="global-modal" class="modal-overlay">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3 id="modal-title">Повідомлення</h3>
+                    <button class="modal-close" id="btn-modal-close"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="modal-body" id="modal-body">
+                    <!-- Dynamic details go here -->
+                </div>
+                <div class="modal-footer" id="modal-footer">
+                    <!-- Dynamic action buttons go here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script modules -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
