@@ -22,7 +22,7 @@ def main():
         print(f"ПОМИЛКА: Файл {CONFIG_FILE} не знайдено! Спочатку запустіть bot.py")
         sys.exit(1)
 
-    cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-R", "80:localhost:8765", "serveo.net"]
+    cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-R", "80:127.0.0.1:8765", "serveo.net"]
     
     # Start SSH process
     try:
@@ -47,8 +47,8 @@ def main():
             url = match.group(1)
             wss_url = url.replace("https://", "wss://")
             print("\n" + "=" * 60)
-            print(f"🎉 ТУНЕЛЬ СТВОРЕНО!")
-            print(f"Публічна адреса сервера: {wss_url}")
+            print(f"[OK] TUNNEL CREATED!")
+            print(f"Public server address: {wss_url}")
             print("=" * 60)
             
             # Read and update config.json
@@ -60,9 +60,9 @@ def main():
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=4, ensure_ascii=False)
                 
-            print("💾 Файл config.json успішно оновлено!")
-            print("👉 Тепер ПЕРЕЗАПУСТІТЬ bot.py та введіть /start у Telegram.")
-            print("⚠️ НЕ ЗАКРИВАЙТЕ ЦЕ ВІКНО, поки граєте з друзями!")
+            print("[SAVE] config.json updated successfully!")
+            print("[INFO] Restart bot.py if needed and type /start in Telegram.")
+            print("[WARNING] DO NOT CLOSE THIS WINDOW while playing!")
             print("=" * 60 + "\n")
             url_found = True
 
