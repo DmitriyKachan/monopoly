@@ -24,51 +24,54 @@ def main():
 
     cmd = ["ssh", "-o", "StrictHostKeyChecking=no", "-R", "80:127.0.0.1:8765", "serveo.net"]
     
-    # Start SSH process
-    try:
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8')
-    except FileNotFoundError:
-        print("ПОМИЛКА: Клієнт 'ssh' не знайдено у вашій системі. Переконайтеся, що OpenSSH встановлено.")
-        sys.exit(1)
-        
-    url_found = False
-    
-    # Read output line by line
     while True:
-        line = process.stdout.readline()
-        if not line:
-            break
-        
-        print(line.strip())
-        
-        # Parse serveo subdomain
-        match = re.search(r'from (https://[a-zA-Z0-9\-\.]+)', line)
-        if match:
-            url = match.group(1)
-            wss_url = url.replace("https://", "wss://")
-            print("\n" + "=" * 60)
-            print(f"[OK] TUNNEL CREATED!")
-            print(f"Public server address: {wss_url}")
-            print("=" * 60)
+        print("[INFO] Attempting to open SSH tunnel...")
+        # Start SSH process
+        try:
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, encoding='utf-8')
+        except FileNotFoundError:
+            print("ПОМИЛКА: Клієнт 'ssh' не знайдено у вашій системі. Переконайтеся, що OpenSSH встановлено.")
+            sys.exit(1)
             
-            # Read and update config.json
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                
-            config['ws_server_url'] = wss_url
+        url_found = False
+        
+        # Read output line by line
+        while True:
+            line = process.stdout.readline()
+            if not line:
+                break
             
-            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-                json.dump(config, f, indent=4, ensure_ascii=False)
+            print(line.strip())
+            
+            # Parse serveo subdomain
+            match = re.search(r'from (https://[a-zA-Z0-9\-\.]+)', line)
+            if match:
+                url = match.group(1)
+                wss_url = url.replace("https://", "wss://")
+                print("\n" + "=" * 60)
+                print(f"[OK] TUNNEL CREATED!")
+                print(f"Public server address: {wss_url}")
+                print("=" * 60)
                 
-            print("[SAVE] config.json updated successfully!")
-            print("[INFO] Restart bot.py if needed and type /start in Telegram.")
-            print("[WARNING] DO NOT CLOSE THIS WINDOW while playing!")
-            print("=" * 60 + "\n")
-            url_found = True
+                # Read and update config.json
+                with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    
+                config['ws_server_url'] = wss_url
+                
+                with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, indent=4, ensure_ascii=False)
+                    
+                print("[SAVE] config.json updated successfully!")
+                print("[INFO] Restart bot.py if needed and type /start in Telegram.")
+                print("[WARNING] DO NOT CLOSE THIS WINDOW while playing!")
+                print("=" * 60 + "\n")
+                url_found = True
 
-    process.wait()
-    if not url_found:
-        print("\nЗ'єднання з тунелем розірвано. Будь ласка, спробуйте запустити знову.")
+        process.wait()
+        print("\n[WARNING] Tunnel connection dropped. Reconnecting in 5 seconds...")
+        import time
+        time.sleep(5)
 
 if __name__ == '__main__':
     main()
