@@ -10,6 +10,23 @@ import { MultiplayerManager } from './multiplayer.js';
 let game = new GameState();
 let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
+
+mp.onPlayerLeftCallback = (name) => {
+    game.log(`⚠️ Гравець ${name} залишив гру!`, 'system');
+    updateGameLog(game);
+    
+    showModal("Гравець вийшов з гри ⚠️", `<p>Гравець <strong>${name}</strong> залишив ігрову сесію.</p>`, [
+        { text: "Зрозуміло", class: "btn-secondary" }
+    ]);
+    
+    const playerObj = game.players.find(p => p.name === name);
+    if (playerObj && !playerObj.isBankrupt) {
+        game.declareBankruptcy(playerObj.id, null);
+        renderBoard(game, handleCellClick);
+        renderPlayersHUD(game);
+    }
+};
+
 let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
 
 // Telegram WebApp Initialization
@@ -351,9 +368,9 @@ function handlePlayerClick(clickedPlayerId) {
     const receiver = game.players.find(p => p.id === clickedPlayerId);
     if (!proposer || !receiver || proposer.isBankrupt || receiver.isBankrupt) return;
 
-    // Filter out properties that have branches (standard Monopoly rule)
-    const proposerProps = game.spaces.filter(s => s.owner === localPlayerId && (!s.branches || s.branches === 0));
-    const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (!s.branches || s.branches === 0));
+    // Filter properties, stations, utilities owned by proposer/receiver (including those with branches)
+    const proposerProps = game.spaces.filter(s => s.owner === localPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY));
+    const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY));
 
     let contentHtml = `
         <div class="trade-modal" style="display: flex; flex-direction: column; gap: 1rem; color: #fff;">
@@ -371,7 +388,7 @@ function handlePlayerClick(clickedPlayerId) {
                             style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
                     </div>
                     
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Ваші компанії (без філій):</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Ваші компанії:</span>
                     <div style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; padding-right: 0.2rem;">
     `;
 
@@ -379,11 +396,12 @@ function handlePlayerClick(clickedPlayerId) {
         contentHtml += `<span style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.5rem 0;">Немає компаній для обміну</span>`;
     } else {
         proposerProps.forEach(p => {
+            const branchText = p.branches > 0 ? ` (${p.branches} ф.)` : '';
             contentHtml += `
                 <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
                     <input type="checkbox" class="trade-offer-prop" value="${p.id}" style="accent-color: var(--color-primary);">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
-                    ${p.name}
+                    ${p.name}${branchText}
                 </label>
             `;
         });
@@ -403,7 +421,7 @@ function handlePlayerClick(clickedPlayerId) {
                             style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
                     </div>
                     
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Активи гравця (без філій):</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Активи гравця:</span>
                     <div style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; padding-right: 0.2rem;">
     `;
 
@@ -411,11 +429,12 @@ function handlePlayerClick(clickedPlayerId) {
         contentHtml += `<span style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.5rem 0;">Немає компаній для обміну</span>`;
     } else {
         receiverProps.forEach(p => {
+            const branchText = p.branches > 0 ? ` (${p.branches} ф.)` : '';
             contentHtml += `
                 <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
                     <input type="checkbox" class="trade-request-prop" value="${p.id}" style="accent-color: var(--color-primary);">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
-                    ${p.name}
+                    ${p.name}${branchText}
                 </label>
             `;
         });

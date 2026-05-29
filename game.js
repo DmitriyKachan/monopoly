@@ -541,7 +541,6 @@ export class GameState {
             const space = this.spaces.find(s => s.id === propId);
             if (space) {
                 space.owner = receiverId;
-                space.branches = 0; // reset any upgrades just in case
             }
         });
 
@@ -550,7 +549,6 @@ export class GameState {
             const space = this.spaces.find(s => s.id === propId);
             if (space) {
                 space.owner = proposerId;
-                space.branches = 0;
             }
         });
 

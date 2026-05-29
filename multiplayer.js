@@ -12,6 +12,7 @@ export class MultiplayerManager {
         this.onGameStartCallback = null;
         this.onActionCallback = null;
         this.onDisconnectCallback = null;
+        this.onPlayerLeftCallback = null;
     }
 
     connect(url, name, avatar, onConnected) {
@@ -42,6 +43,9 @@ export class MultiplayerManager {
                 case 'player_update':
                     this.playersList = data.players;
                     if (this.onPlayerUpdateCallback) this.onPlayerUpdateCallback(this.playersList);
+                    break;
+                case 'player_left':
+                    if (this.onPlayerLeftCallback) this.onPlayerLeftCallback(data.name);
                     break;
                 case 'game_start':
                     if (this.onGameStartCallback) this.onGameStartCallback();
