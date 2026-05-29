@@ -40,7 +40,7 @@ export const SPACES_DATA = [
         price: 600,
         rent: [50, 200, 500, 1000, 2000],
         branchCost: 500,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#e11d48"/><circle cx="50" cy="50" r="30" fill="#facc15"/><text x="50" y="65" font-family="'Outfit', sans-serif" font-size="42" font-weight="900" text-anchor="middle" fill="#1e293b">А</text></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#003594"/><circle cx="50" cy="50" r="38" fill="none" stroke="#e4002b" stroke-width="6"/><text x="50" y="62" font-family="'Outfit', 'Inter', sans-serif" font-size="34" font-weight="900" text-anchor="middle" fill="#ffffff">АТБ</text></svg>`
     },
     {
         id: 2,
@@ -50,7 +50,7 @@ export const SPACES_DATA = [
         price: 600,
         rent: [50, 200, 500, 1000, 2000],
         branchCost: 500,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="none" stroke="#ea580c" stroke-width="10"/><path d="M32,55 Q50,75 68,55" fill="none" stroke="#ea580c" stroke-width="8" stroke-linecap="round"/><circle cx="35" cy="40" r="5" fill="#ea580c"/><circle cx="65" cy="40" r="5" fill="#ea580c"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="30" width="70" height="55" rx="10" fill="#f97316"/><path d="M35,30 Q50,5 65,30" fill="none" stroke="#ea580c" stroke-width="8" stroke-linecap="round"/><text x="50" y="68" font-family="'Outfit', 'Inter', sans-serif" font-size="28" font-weight="900" text-anchor="middle" fill="#ffffff">сільпо</text></svg>`
     },
     {
         id: 3,
@@ -63,7 +63,7 @@ export const SPACES_DATA = [
         type: SPACE_TYPES.STATION,
         price: 2000,
         baseRent: 500,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20,45 L80,45 L70,30 L30,30 Z M25,45 L25,75 L75,75 L75,45 Z M35,62 C35,66 40,66 40,62 Z M65,62 C65,66 60,66 60,62 Z" fill="none" stroke="#94a3b8" stroke-width="8" stroke-linejoin="round"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="15" fill="#0f172a"/><path d="M25,65 H75 M25,50 H75 M20,35 L50,15 L80,35 Z" fill="none" stroke="#f8fafc" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><text x="50" y="58" font-family="'Outfit', 'Inter', sans-serif" font-size="22" font-weight="900" text-anchor="middle" fill="#e2e8f0">УЗ</text></svg>`
     },
     {
         id: 5,
@@ -79,7 +79,7 @@ export const SPACES_DATA = [
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
         branchCost: 700,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="40" fill="#22c55e"/><circle cx="36" cy="43" r="5" fill="#fff"/><circle cx="64" cy="43" r="5" fill="#fff"/><path d="M32,60 Q50,75 68,60" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#00a046"/><path d="M35,16 Q40,8 48,12" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><path d="M65,16 Q60,8 52,12" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><circle cx="38" cy="42" r="5" fill="#ffffff"/><circle cx="62" cy="42" r="5" fill="#ffffff"/><path d="M32,58 Q50,78 68,58" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/></svg>`
     },
     {
         id: 7,
@@ -89,7 +89,7 @@ export const SPACES_DATA = [
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
         branchCost: 700,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="25" width="50" height="50" rx="12" fill="none" stroke="#a855f7" stroke-width="10"/><circle cx="40" cy="50" r="6" fill="#a855f7"/><circle cx="60" cy="50" r="6" fill="#a855f7"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50,12 L88,34 L88,76 L50,98 L12,76 L12,34 Z" fill="#8b5cf6"/><path d="M50,12 L50,98 M12,34 L50,56 L88,34" fill="none" stroke="#a78bfa" stroke-width="4"/><circle cx="31" cy="45" r="5" fill="#ffffff"/><circle cx="69" cy="45" r="5" fill="#ffffff"/><circle cx="50" cy="74" r="5" fill="#ffffff"/></svg>`
     },
     {
         id: 8,
@@ -99,7 +99,7 @@ export const SPACES_DATA = [
         price: 1400,
         rent: [120, 480, 1200, 2400, 4200],
         branchCost: 1000,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,68 L30,35 L42,48 L58,48 L70,35 L70,68 Z" fill="none" stroke="#ef4444" stroke-width="8" stroke-linejoin="round"/><circle cx="42" cy="56" r="4" fill="#ef4444"/><circle cx="58" cy="56" r="4" fill="#ef4444"/><path d="M46,61 Q50,64 54,61" fill="none" stroke="#ef4444" stroke-width="3"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#1e1b4b"/><path d="M28,45 L18,20 L40,32 Z" fill="#111827"/><path d="M72,45 L82,20 L60,32 Z" fill="#111827"/><path d="M30,42 L23,25 L37,33 Z" fill="#f43f5e"/><path d="M70,42 L77,25 L63,33 Z" fill="#f43f5e"/><circle cx="50" cy="55" r="30" fill="#111827"/><ellipse cx="38" cy="52" rx="4" ry="6" fill="#facc15"/><ellipse cx="62" cy="52" rx="4" ry="6" fill="#facc15"/><line x1="38" y1="47" x2="38" y2="57" stroke="#000" stroke-width="2" stroke-linecap="round"/><line x1="62" y1="47" x2="62" y2="57" stroke="#000" stroke-width="2" stroke-linecap="round"/><polygon points="50,60 47,57 53,57" fill="#f43f5e"/><path d="M47,63 Q50,66 53,63" fill="none" stroke="#f43f5e" stroke-width="2"/><line x1="22" y1="58" x2="10" y2="56" stroke="#f8fafc" stroke-width="2"/><line x1="22" y1="62" x2="8" y2="62" stroke="#f8fafc" stroke-width="2"/><line x1="78" y1="58" x2="90" y2="56" stroke="#f8fafc" stroke-width="2"/><line x1="78" y1="62" x2="92" y2="62" stroke="#f8fafc" stroke-width="2"/></svg>`
     },
     {
         id: 9,
@@ -109,7 +109,7 @@ export const SPACES_DATA = [
         price: 1600,
         rent: [140, 560, 1400, 2800, 4800],
         branchCost: 1000,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M25,20 H75 V35 H25 Z M25,45 H75 V75 C75,80 70,80 70,80 H30 C25,80 25,75 25,75 Z" fill="none" stroke="#10b981" stroke-width="8" stroke-linejoin="round"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#78b82a"/><path d="M32,25 H68 V35 H56 V75 H68 V81 H32 V75 H44 V35 H32 Z" fill="#ffffff"/></svg>`
     },
     {
         id: 10,
@@ -125,7 +125,7 @@ export const SPACES_DATA = [
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
         branchCost: 1200,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="22" y="22" width="56" height="56" rx="8" fill="none" stroke="#ef4444" stroke-width="10"/><path d="M22,50 H78 M50,22 V78" stroke="#ef4444" stroke-width="8"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="15" fill="#de2c27"/><path d="M50,22 L78,50 L50,78 L22,50 Z" fill="#ffffff"/><rect x="42" y="42" width="16" height="16" fill="#de2c27"/><path d="M50,15 L50,30 M50,70 L50,85 M15,50 L30,50 M70,50 L85,50" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>`
     },
     {
         id: 12,
@@ -135,7 +135,7 @@ export const SPACES_DATA = [
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
         branchCost: 1200,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="36" fill="none" stroke="#eab308" stroke-width="8"/><path d="M30,50 C30,35 70,35 70,50 C70,65 40,65 40,55" fill="none" stroke="#eab308" stroke-width="8"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#ffcc00"/><path d="M30,50 C30,32 70,32 70,50 C70,68 40,68 40,55 C40,48 58,48 58,55" fill="none" stroke="#1e293b" stroke-width="8" stroke-linecap="round"/><path d="M30,42 L22,58 L38,58 Z" fill="#1e293b"/></svg>`
     },
     {
         id: 13,
@@ -150,7 +150,7 @@ export const SPACES_DATA = [
         price: 2200,
         rent: [200, 800, 2000, 4000, 6000],
         branchCost: 1500,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50,15 L58,38 H82 L62,52 L70,75 L50,60 L30,75 L38,52 L18,38 H42 Z" fill="#3b82f6"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#0057b7"/><path d="M50,15 L54,38 L77,24 L60,45 L82,50 L60,55 L77,76 L54,62 L50,85 L46,62 L23,76 L40,55 L18,50 L40,45 L23,24 L46,38 Z" fill="#ffdd00"/></svg>`
     },
     {
         id: 15,
@@ -166,7 +166,7 @@ export const SPACES_DATA = [
         price: 2600,
         rent: [240, 960, 2400, 4800, 7200],
         branchCost: 1500,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M22,62 L50,30 L78,62 M32,52 V78 H68 V52" fill="none" stroke="#3b82f6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/><text x="50" y="65" font-family="'Outfit', sans-serif" font-size="28" font-weight="900" text-anchor="middle" fill="#3b82f6">Е</text></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="15" fill="#0054a6"/><path d="M22,50 L50,22 L78,50 M32,45 V75 H68 V45" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><path d="M42,42 H58 M42,52 H54 M42,62 H58 M42,34 V70" stroke="#ffdd00" stroke-width="6" stroke-linecap="round"/></svg>`
     },
     {
         id: 17,
@@ -176,7 +176,7 @@ export const SPACES_DATA = [
         price: 2800,
         rent: [260, 1000, 2600, 5200, 8000],
         branchCost: 1800,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="38" fill="none" stroke="#22c55e" stroke-width="8"/><path d="M30,35 L42,65 L50,48 L58,65 L70,35" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50,12 C50,12 82,48 82,65 C82,82.5 67.5,90 50,90 C32.5,90 18,82.5 18,65 C18,48 50,12 50,12 Z" fill="#009639"/><path d="M32,48 L42,75 L50,56 L58,75 L68,48" fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     },
     {
         id: 18,
@@ -184,7 +184,7 @@ export const SPACES_DATA = [
         type: SPACE_TYPES.UTILITY,
         price: 1500,
         multiplier: 100,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="25" y="25" width="50" height="50" rx="6" fill="#000"/><text x="50" y="58" font-family="'Outfit', sans-serif" font-size="24" font-weight="800" text-anchor="middle" fill="#fff">дія</text></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="18" fill="#111827"/><text x="50" y="58" font-family="'Outfit', 'Inter', sans-serif" font-size="28" font-weight="900" text-anchor="middle" fill="#ffffff" letter-spacing="2">дія</text><circle cx="50" cy="72" r="3" fill="#00f0ff"/></svg>`
     },
     {
         id: 19,
@@ -194,7 +194,7 @@ export const SPACES_DATA = [
         price: 3200,
         rent: [350, 1400, 3500, 7000, 10000],
         branchCost: 2000,
-        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,25 L75,50 L30,75 Z" fill="#6366f1"/></svg>`
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" rx="18" fill="#2d3047"/><path d="M30,30 L45,55 L50,45 L55,55 L70,30 L70,70 L60,70 L60,48 L50,68 L40,48 L40,70 L30,70 Z" fill="#00f0ff"/></svg>`
     }
 ];
 
@@ -516,6 +516,45 @@ export class GameState {
         space.owner = null;
         owner.money += sellValue;
         this.log(`${owner.name} продав компанію ${space.name} банку за ₴${sellValue}`, 'system');
+        return true;
+    }
+
+    executeTrade(proposerId, receiverId, offerProperties, offerCash, requestProperties, requestCash) {
+        const proposer = this.players.find(p => p.id === proposerId);
+        const receiver = this.players.find(p => p.id === receiverId);
+
+        if (!proposer || !receiver || proposer.isBankrupt || receiver.isBankrupt) return false;
+
+        // Check if money limits are satisfied
+        if (proposer.money < offerCash) return false;
+        if (receiver.money < requestCash) return false;
+
+        // Execute money transfer
+        proposer.money -= offerCash;
+        proposer.money += requestCash;
+
+        receiver.money += offerCash;
+        receiver.money -= requestCash;
+
+        // Transfer offered properties (proposer -> receiver)
+        offerProperties.forEach(propId => {
+            const space = this.spaces.find(s => s.id === propId);
+            if (space) {
+                space.owner = receiverId;
+                space.branches = 0; // reset any upgrades just in case
+            }
+        });
+
+        // Transfer requested properties (receiver -> proposer)
+        requestProperties.forEach(propId => {
+            const space = this.spaces.find(s => s.id === propId);
+            if (space) {
+                space.owner = proposerId;
+                space.branches = 0;
+            }
+        });
+
+        this.log(`🤝 Угода! ${proposer.name} та ${receiver.name} обмінялися активами.`, 'gain');
         return true;
     }
 

@@ -3,7 +3,7 @@
 // ==========================================================================
 
 import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
-import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal } from './ui.js';
+import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback } from './ui.js';
 import { MultiplayerManager } from './multiplayer.js';
 
 // Game state instance
@@ -35,6 +35,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Populate User Profile
     document.getElementById('user-name').innerText = userProfile.name;
     document.getElementById('user-avatar').src = userProfile.avatar;
+
+    // Set callback for player HUD trading clicks
+    setPlayerClickCallback(handlePlayerClick);
 
     // Fade out splash screen after 1.5s
     setTimeout(() => {
@@ -289,19 +292,32 @@ function startNewGame(playerList) {
     updateGameLog(game);
 }
 
-// Click on cell shows deed card properties details
+// Click on cell shows deed card properties details (restricted to own properties on player's turn)
 function handleCellClick(index) {
     const space = game.spaces[index];
     if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
-        const isSelf = space.owner === game.currentPlayerIndex;
+        const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
+        const isSelf = space.owner === localPlayerId;
+        
+        if (!isSelf) {
+            // Cannot inspect or click properties not owned by self (requested by user)
+            return;
+        }
+
+        const isMyTurn = game.currentPlayerIndex === localPlayerId;
+        if (!isMyTurn) {
+            // Can only interact with properties during own turn
+            return;
+        }
+
         showPropertyModal(
             space,
             () => {}, // buy handler (only triggered inside actual landing workflow)
             () => {}, 
-            isSelf,
+            true, // isSelfOwner
             () => {
                 // Upgrade handler
-                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId && isSelf) {
+                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
                     const success = game.upgradeProperty(mp.playerId, space.id);
                     if (success) {
                         mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
@@ -312,10 +328,153 @@ function handleCellClick(index) {
                     } else {
                         alert("Недостатньо грошей для будівництва філії!");
                     }
+                } else if (!isMultiplayerGame) {
+                    const success = game.upgradeProperty(game.currentPlayerIndex, space.id);
+                    if (success) {
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    }
                 }
             }
         );
     }
+}
+
+// Open trade proposal modal on HUD player nickname click
+function handlePlayerClick(clickedPlayerId) {
+    const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
+    if (clickedPlayerId === localPlayerId) return;
+
+    const proposer = game.players.find(p => p.id === localPlayerId);
+    const receiver = game.players.find(p => p.id === clickedPlayerId);
+    if (!proposer || !receiver || proposer.isBankrupt || receiver.isBankrupt) return;
+
+    // Filter out properties that have branches (standard Monopoly rule)
+    const proposerProps = game.spaces.filter(s => s.owner === localPlayerId && (!s.branches || s.branches === 0));
+    const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (!s.branches || s.branches === 0));
+
+    let contentHtml = `
+        <div class="trade-modal" style="display: flex; flex-direction: column; gap: 1rem; color: #fff;">
+            <p style="text-align: center; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                Пропозиція торгової угоди для <strong>${receiver.name}</strong>
+            </p>
+            <div style="display: flex; gap: 1rem;">
+                <!-- Proposer Offer (Left) -->
+                <div style="flex: 1; border-right: 1px solid var(--border-glass); padding-right: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <h4 style="color: var(--color-success); border-bottom: 1px solid var(--border-glass); padding-bottom: 0.2rem; font-size: 0.95rem;">Ви пропонуєте:</h4>
+                    
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Доплата (₴):</label>
+                        <input type="number" id="trade-offer-cash" min="0" max="${proposer.money}" value="0" 
+                            style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
+                    </div>
+                    
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Ваші компанії (без філій):</span>
+                    <div style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; padding-right: 0.2rem;">
+    `;
+
+    if (proposerProps.length === 0) {
+        contentHtml += `<span style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.5rem 0;">Немає компаній для обміну</span>`;
+    } else {
+        proposerProps.forEach(p => {
+            contentHtml += `
+                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                    <input type="checkbox" class="trade-offer-prop" value="${p.id}" style="accent-color: var(--color-primary);">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
+                    ${p.name}
+                </label>
+            `;
+        });
+    }
+
+    contentHtml += `
+                    </div>
+                </div>
+
+                <!-- Receiver Request (Right) -->
+                <div style="flex: 1; padding-left: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <h4 style="color: var(--color-yellow); border-bottom: 1px solid var(--border-glass); padding-bottom: 0.2rem; font-size: 0.95rem;">Ви хочете:</h4>
+                    
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">Гроші від гравця (₴):</label>
+                        <input type="number" id="trade-request-cash" min="0" max="${receiver.money}" value="0" 
+                            style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
+                    </div>
+                    
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Активи гравця (без філій):</span>
+                    <div style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; padding-right: 0.2rem;">
+    `;
+
+    if (receiverProps.length === 0) {
+        contentHtml += `<span style="font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 0.5rem 0;">Немає компаній для обміну</span>`;
+    } else {
+        receiverProps.forEach(p => {
+            contentHtml += `
+                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                    <input type="checkbox" class="trade-request-prop" value="${p.id}" style="accent-color: var(--color-primary);">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
+                    ${p.name}
+                </label>
+            `;
+        });
+    }
+
+    contentHtml += `
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    showModal("Пропозиція обміну 🤝", contentHtml, [
+        {
+            text: "Надіслати пропозицію ✉️",
+            class: "btn-primary",
+            onClick: () => {
+                const offerCash = parseInt(document.getElementById('trade-offer-cash').value) || 0;
+                const requestCash = parseInt(document.getElementById('trade-request-cash').value) || 0;
+
+                const offerProps = Array.from(document.querySelectorAll('.trade-offer-prop:checked')).map(el => parseInt(el.value));
+                const requestProps = Array.from(document.querySelectorAll('.trade-request-prop:checked')).map(el => parseInt(el.value));
+
+                if (offerCash < 0 || offerCash > proposer.money) {
+                    alert("Невірна сума доплати!");
+                    return;
+                }
+                if (requestCash < 0 || requestCash > receiver.money) {
+                    alert("Невірна сума запиту грошей!");
+                    return;
+                }
+
+                if (offerCash === 0 && requestCash === 0 && offerProps.length === 0 && requestProps.length === 0) {
+                    alert("Ви не вибрали жодного активу чи суми для торгу!");
+                    return;
+                }
+
+                if (isMultiplayerGame) {
+                    mp.sendAction({
+                        type: 'trade_propose',
+                        proposerId: localPlayerId,
+                        receiverId: clickedPlayerId,
+                        offerCash,
+                        requestCash,
+                        offerProps,
+                        requestProps
+                    });
+                    game.log(`Ви надіслали пропозицію обміну для ${receiver.name}...`);
+                    updateGameLog(game);
+                } else {
+                    alert("Торги доступні тільки в мережевій грі!");
+                }
+            }
+        },
+        {
+            text: "Скасувати",
+            class: "btn-secondary"
+        }
+    ]);
 }
 
 // User Roll Turn
@@ -827,6 +986,117 @@ function handleRemoteAction(action) {
             updateGameLog(game);
             if (game.isGameOver) {
                 showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+            }
+            break;
+
+        case 'trade_propose':
+            if (action.receiverId !== mp.playerId) break;
+            const proposerPlayer = game.players.find(p => p.id === action.proposerId);
+            if (!proposerPlayer) break;
+
+            const offerPropsNames = action.offerProps.map(id => game.spaces.find(s => s.id === id).name);
+            const requestPropsNames = action.requestProps.map(id => game.spaces.find(s => s.id === id).name);
+
+            let tradeHtml = `
+                <div style="color: #fff; display: flex; flex-direction: column; gap: 1rem;">
+                    <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
+                        Гравець <strong>${proposerPlayer.name}</strong> пропонує вам обмін:
+                    </p>
+                    <div style="display: flex; gap: 1rem; background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-glass);">
+                        <div style="flex: 1; border-right: 1px solid var(--border-glass); padding-right: 0.5rem;">
+                            <span style="color: var(--color-success); font-weight: bold; font-size: 0.9rem;">Ви отримаєте:</span>
+                            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem;">
+                                <span>Гроші: <strong>₴${action.offerCash}</strong></span>
+                                <span>Компанії: ${offerPropsNames.join(', ') || '<span style="color:var(--text-muted);">нічого</span>'}</span>
+                            </div>
+                        </div>
+                        <div style="flex: 1; padding-left: 0.5rem;">
+                            <span style="color: var(--color-danger); font-weight: bold; font-size: 0.9rem;">З вас спишеться:</span>
+                            <div style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem;">
+                                <span>Гроші: <strong>₴${action.requestCash}</strong></span>
+                                <span>Компанії: ${requestPropsNames.join(', ') || '<span style="color:var(--text-muted);">нічого</span>'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            showModal("Пропозиція обміну 🤝", tradeHtml, [
+                {
+                    text: "Прийняти ✅",
+                    class: "btn-primary",
+                    onClick: () => {
+                        const receiver = game.players.find(p => p.id === mp.playerId);
+                        if (receiver.money < action.requestCash) {
+                            alert("У вас недостатньо грошей для прийняття цієї угоди!");
+                            mp.sendAction({
+                                type: 'trade_decline',
+                                proposerId: action.proposerId,
+                                receiverId: mp.playerId,
+                                reason: 'no_money'
+                            });
+                            return;
+                        }
+                        if (proposerPlayer.money < action.offerCash) {
+                            alert("У супротивника недостатньо грошей для виконання угоди!");
+                            mp.sendAction({
+                                type: 'trade_decline',
+                                proposerId: action.proposerId,
+                                receiverId: mp.playerId,
+                                reason: 'partner_no_money'
+                            });
+                            return;
+                        }
+
+                        game.executeTrade(action.proposerId, action.receiverId, action.offerProps, action.offerCash, action.requestProps, action.requestCash);
+                        mp.sendAction({
+                            type: 'trade_accept',
+                            proposerId: action.proposerId,
+                            receiverId: action.receiverId,
+                            offerProps: action.offerProps,
+                            offerCash: action.offerCash,
+                            requestProps: action.requestProps,
+                            requestCash: action.requestCash
+                        });
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                    }
+                },
+                {
+                    text: "Відхилити ❌",
+                    class: "btn-secondary",
+                    onClick: () => {
+                        mp.sendAction({
+                            type: 'trade_decline',
+                            proposerId: action.proposerId,
+                            receiverId: mp.playerId
+                        });
+                        game.log(`Ви відхилили пропозицію обміну.`);
+                        updateGameLog(game);
+                    }
+                }
+            ]);
+            break;
+
+        case 'trade_accept':
+            game.executeTrade(action.proposerId, action.receiverId, action.offerProps, action.offerCash, action.requestProps, action.requestCash);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            hideModal();
+            break;
+
+        case 'trade_decline':
+            if (action.proposerId === mp.playerId) {
+                const partner = game.players.find(p => p.id === action.receiverId);
+                const reasonStr = action.reason === 'no_money' ? " (недостатньо коштів у вас)" : 
+                                  action.reason === 'partner_no_money' ? " (недостатньо коштів у партнера)" : "";
+                showModal("Угоду відхилено ❌", `<p>Гравець <strong>${partner ? partner.name : 'Суперник'}</strong> відхилив вашу пропозицію обміну${reasonStr}.</p>`, [
+                    { text: "Зрозуміло", class: "btn-secondary" }
+                ]);
+                game.log(`Пропозицію обміну відхилено.`);
+                updateGameLog(game);
             }
             break;
 

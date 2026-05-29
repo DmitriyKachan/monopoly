@@ -241,6 +241,11 @@ function updateDiceDots(dieEl, value) {
     }
 }
 
+let playerClickCallback = null;
+export function setPlayerClickCallback(callback) {
+    playerClickCallback = callback;
+}
+
 // Redraw HUD cards for players
 export function renderPlayersHUD(gameState) {
     const hudEl = document.getElementById('game-players-hud');
@@ -250,6 +255,11 @@ export function renderPlayersHUD(gameState) {
         const card = document.createElement('div');
         card.className = `player-hud-card ${gameState.currentPlayerIndex === player.id ? 'active' : ''} ${player.isBankrupt ? 'bankrupt' : ''}`;
         
+        if (playerClickCallback && !player.isBankrupt) {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', () => playerClickCallback(player.id));
+        }
+
         const dot = document.createElement('div');
         dot.className = `hud-player-dot p-color-${player.id}`;
         card.appendChild(dot);
