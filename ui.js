@@ -3,7 +3,6 @@
 // ==========================================================================
 
 import { SPACE_TYPES, COLOR_GROUPS } from './game.js';
-import { shopData, DICE_SKINS, TOKEN_SKINS } from './shop.js';
 
 // Setup Modal DOM references
 const modalOverlay = document.getElementById('global-modal');
@@ -139,10 +138,7 @@ export function updatePlayerTokens(gameState) {
             const tokenEl = document.createElement('div');
             tokenEl.className = `token p-color-${player.id}`;
             
-            // Add premium skin classes if equipped
-            if (player.tokenSkin && player.tokenSkin !== 'classic') {
-                tokenEl.classList.add(player.tokenSkin);
-            }
+
             
             tokenEl.id = `player-token-${player.id}`;
             container.appendChild(tokenEl);
@@ -192,18 +188,9 @@ export function animateDiceRoll(d1, d2, callback) {
     const die2 = document.getElementById('die-2');
     const sumEl = document.getElementById('dice-sum-display');
 
-    // Apply equipped skins
-    const equippedDiceSkin = shopData.equippedDice;
-    const skinData = DICE_SKINS.find(s => s.id === equippedDiceSkin);
-    
     // Clear previous skins
     die1.className = 'die';
     die2.className = 'die';
-    
-    if (skinData && skinData.class) {
-        die1.classList.add(skinData.class);
-        die2.classList.add(skinData.class);
-    }
 
     die1.classList.add('rolling');
     die2.classList.add('rolling');
@@ -362,20 +349,7 @@ export function showChanceModal(cardText, onConfirm) {
     showModal("Шанс / Подія", content, [{ text: "Отримати", class: "btn-primary", onClick: onConfirm }]);
 }
 
-// Display Stars purchase invoices dialogs
-export function showStarsPaymentModal(itemName, starsPrice, onConfirm) {
-    const content = `
-        <div class="chance-popup-card" style="border-color: var(--color-yellow); box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);">
-            <div class="chance-icon" style="color: var(--color-yellow);"><i class="fa-solid fa-star text-star"></i></div>
-            <h4 class="chance-title">Рахунок на оплату</h4>
-            <p class="chance-text">Придбати предмет: <strong>${itemName}</strong> за <strong>${starsPrice} ⭐️ Telegram Stars</strong>?</p>
-        </div>
-    `;
-    showModal("Підтвердження покупки", content, [
-        { text: `Сплатити ${starsPrice} ⭐️`, class: "btn-primary", onClick: onConfirm },
-        { text: "Скасувати", class: "btn-secondary" }
-    ]);
-}
+
 
 // Display End game screen leaderboard modal
 export function showGameOverModal(rankings, onExit) {
@@ -408,110 +382,4 @@ export function showGameOverModal(rankings, onExit) {
     showModal("Гру Завершено!", rowsHtml, [{ text: "Головне Меню", class: "btn-primary", onClick: onExit }]);
 }
 
-// Draw the store customizers grids
-export function renderShopScreen(onUpdateBalance) {
-    const tokenGrid = document.getElementById('tokens-shop-grid');
-    const diceGrid = document.getElementById('dice-shop-grid');
-    
-    tokenGrid.innerHTML = '';
-    diceGrid.innerHTML = '';
 
-    // Render tokens list
-    TOKEN_SKINS.forEach(token => {
-        const card = document.createElement('div');
-        card.className = `shop-item-card ${shopData.equippedToken === token.id ? 'equipped' : ''}`;
-        
-        card.innerHTML = `
-            <div class="shop-item-preview">${token.preview}</div>
-            <span class="shop-item-name">${token.name}</span>
-            <p style="font-size: 0.7rem; color: var(--text-muted);">${token.desc}</p>
-        `;
-
-        const btn = document.createElement('button');
-        btn.className = 'btn shop-item-btn';
-        
-        const isOwned = shopData.ownedTokens.includes(token.id);
-        const isEquipped = shopData.equippedToken === token.id;
-
-        if (isEquipped) {
-            btn.className += ' equipped';
-            btn.innerHTML = `<i class="fa-solid fa-check"></i> Екіпіровано`;
-        } else if (isOwned) {
-            btn.className += ' equip';
-            btn.innerText = 'Одягти';
-            btn.addEventListener('click', () => {
-                shopData.equipItem('token', token.id);
-                renderShopScreen(onUpdateBalance);
-            });
-        } else {
-            btn.className += ' buy';
-            btn.innerHTML = `<i class="fa-solid fa-star text-star"></i> ${token.price}`;
-            btn.addEventListener('click', () => {
-                showStarsPaymentModal(token.name, token.price, () => {
-                    shopData.buyItem('token', token.id, token.price, () => {
-                        onUpdateBalance();
-                        renderShopScreen(onUpdateBalance);
-                    }, (err) => {
-                        alert(err);
-                    });
-                });
-            });
-        }
-
-        card.appendChild(btn);
-        tokenGrid.appendChild(card);
-    });
-
-    // Render dice list
-    DICE_SKINS.forEach(dice => {
-        const card = document.createElement('div');
-        card.className = `shop-item-card ${shopData.equippedDice === dice.id ? 'equipped' : ''}`;
-        
-        let dieClassPreview = 'die';
-        if (dice.class) dieClassPreview += ` ${dice.class}`;
-
-        card.innerHTML = `
-            <div style="height:48px; display:flex; align-items:center;">
-                <div class="${dieClassPreview}" style="width:28px; height:28px; grid-template-columns: repeat(3, 1fr); padding: 3px; border-radius:6px; box-shadow:none;">
-                    <span class="dot" style="width:3px; height:3px; grid-area: 2/2;"></span>
-                </div>
-            </div>
-            <span class="shop-item-name">${dice.name}</span>
-            <p style="font-size: 0.7rem; color: var(--text-muted);">${dice.desc}</p>
-        `;
-
-        const btn = document.createElement('button');
-        btn.className = 'btn shop-item-btn';
-        
-        const isOwned = shopData.ownedDice.includes(dice.id);
-        const isEquipped = shopData.equippedDice === dice.id;
-
-        if (isEquipped) {
-            btn.className += ' equipped';
-            btn.innerHTML = `<i class="fa-solid fa-check"></i> Екіпіровано`;
-        } else if (isOwned) {
-            btn.className += ' equip';
-            btn.innerText = 'Одягти';
-            btn.addEventListener('click', () => {
-                shopData.equipItem('dice', dice.id);
-                renderShopScreen(onUpdateBalance);
-            });
-        } else {
-            btn.className += ' buy';
-            btn.innerHTML = `<i class="fa-solid fa-star text-star"></i> ${dice.price}`;
-            btn.addEventListener('click', () => {
-                showStarsPaymentModal(dice.name, dice.price, () => {
-                    shopData.buyItem('dice', dice.id, dice.price, () => {
-                        onUpdateBalance();
-                        renderShopScreen(onUpdateBalance);
-                    }, (err) => {
-                        alert(err);
-                    });
-                });
-            });
-        }
-
-        card.appendChild(btn);
-        diceGrid.appendChild(card);
-    });
-}

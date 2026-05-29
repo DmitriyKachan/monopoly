@@ -1,15 +1,13 @@
 // ==========================================================================
-// MAIN APP ROUTER & PLAY LOOP - MONOPOLY UKRAINE
+// MAIN APP ROUTER & PLAY LOOP - MONOPOLY UKRAINE (SIMPLIFIED MULTIPLAYER ONLY)
 // ==========================================================================
 
 import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
-import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, renderShopScreen, showModal, hideModal } from './ui.js';
-import { startMatchmakingSimulation, BotAI, MultiplayerManager } from './multiplayer.js';
-import { shopData } from './shop.js';
+import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal } from './ui.js';
+import { MultiplayerManager } from './multiplayer.js';
 
 // Game state instance
 let game = new GameState();
-let isLocalGame = false;
 let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
 let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
@@ -20,11 +18,8 @@ const tg = window.Telegram?.WebApp;
 if (tg) {
     tg.ready();
     tg.expand();
-    
-    // Set headers color
     tg.setHeaderColor('#0b0f19');
     
-    // Retrieve Telegram User parameters
     if (tg.initDataUnsafe?.user) {
         const u = tg.initDataUnsafe.user;
         userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
@@ -37,33 +32,18 @@ if (tg) {
 
 // Global DOM setup
 document.addEventListener("DOMContentLoaded", () => {
-    // Populate User HUD in Menu
+    // Populate User Profile
     document.getElementById('user-name').innerText = userProfile.name;
     document.getElementById('user-avatar').src = userProfile.avatar;
-    document.getElementById('user-rank').innerText = getRankTitle(shopData.stars);
-    updateStarsBalances();
 
     // Fade out splash screen after 1.5s
     setTimeout(() => {
         switchScreen('screen-menu');
     }, 1500);
 
-    // Setup Router Event Listeners
     setupMenuHandlers();
     setupBackButton();
 });
-
-function getRankTitle(stars) {
-    if (stars >= 500) return "Олігарх України";
-    if (stars >= 300) return "Венчурний Інвестор";
-    if (stars >= 150) return "Власник Корпорації";
-    return "Магнат початківець";
-}
-
-function updateStarsBalances() {
-    document.getElementById('stars-balance').innerText = shopData.stars;
-    document.getElementById('shop-stars-balance').innerText = shopData.stars;
-}
 
 // Router Screen Switcher
 function switchScreen(screenId) {
@@ -74,7 +54,6 @@ function switchScreen(screenId) {
     const activeScr = document.getElementById(screenId);
     activeScr.classList.add('active');
 
-    // Update Telegram BackButton visibility
     if (tg && tg.BackButton) {
         if (screenId === 'screen-menu' || screenId === 'screen-splash') {
             tg.BackButton.hide();
@@ -85,21 +64,17 @@ function switchScreen(screenId) {
 }
 
 function setupBackButton() {
-    // Web Back button
     document.querySelectorAll('.btn-back').forEach(btn => {
         btn.addEventListener('click', () => {
             switchScreen('screen-menu');
         });
     });
 
-    // Telegram Back button integration
     if (tg && tg.BackButton) {
         tg.BackButton.onClick(() => {
-            // Find current active screen
             const activeScreen = document.querySelector('.screen.active');
             if (activeScreen && activeScreen.id !== 'screen-menu') {
                 if (activeScreen.id === 'screen-game') {
-                    // Ask for verification before exiting game
                     showModal("Вихід з гри", "<p>Ви впевнені, що хочете вийти з поточної сесії? Ваш прогрес буде втрачено.</p>", [
                         { text: "Так, вийти", class: "btn-danger", onClick: () => switchScreen('screen-menu') },
                         { text: "Скасувати", class: "btn-secondary" }
@@ -114,9 +89,8 @@ function setupBackButton() {
 
 // Menu Click Bindings
 function setupMenuHandlers() {
-    // Multiplayer Lobby Screen init
+    // Open Lobby
     document.getElementById('btn-quick-play').addEventListener('click', () => {
-        isLocalGame = false;
         isMultiplayerGame = false;
         switchScreen('screen-lobby');
         initLobbyScreen();
@@ -140,7 +114,6 @@ function setupMenuHandlers() {
             document.getElementById('display-room-code').innerText = mp.roomCode;
             renderLobbyPlayers(players);
             
-            // Host can start game if >= 2 players
             const startBtn = document.getElementById('btn-start-multiplayer');
             if (players.length >= 2) {
                 startBtn.style.display = 'block';
@@ -154,21 +127,20 @@ function setupMenuHandlers() {
             startNewGame(mp.playersList.map(p => ({
                 name: p.name,
                 isBot: false,
-                avatar: p.avatar,
-                tokenSkin: p.id === 0 ? shopData.equippedToken : 'classic'
+                avatar: p.avatar
             })));
         };
 
         mp.onActionCallback = handleRemoteAction;
     });
 
-    // Join Room Init Panel
+    // Join Room panel
     document.getElementById('btn-join-lobby-init').addEventListener('click', () => {
         document.getElementById('lobby-modes').style.display = 'none';
         document.getElementById('lobby-code-input').style.display = 'flex';
     });
 
-    // Cancel Join Panel
+    // Cancel Join
     document.getElementById('btn-cancel-join').addEventListener('click', () => {
         document.getElementById('lobby-code-input').style.display = 'none';
         document.getElementById('lobby-modes').style.display = 'flex';
@@ -197,7 +169,6 @@ function setupMenuHandlers() {
             document.getElementById('matchmaking-status').innerText = "Очікування старту від організатора...";
             document.getElementById('display-room-code').innerText = mp.roomCode;
             renderLobbyPlayers(players);
-            // Guest cannot start game
             document.getElementById('btn-start-multiplayer').style.display = 'none';
         };
 
@@ -206,77 +177,38 @@ function setupMenuHandlers() {
             startNewGame(mp.playersList.map(p => ({
                 name: p.name,
                 isBot: false,
-                avatar: p.avatar,
-                tokenSkin: p.id === mp.playerId ? shopData.equippedToken : 'classic'
+                avatar: p.avatar
             })));
         };
 
         mp.onActionCallback = handleRemoteAction;
     });
 
-    // Start Multiplayer Button click (Host only)
+    // Start multiplayer by Host
     document.getElementById('btn-start-multiplayer').addEventListener('click', () => {
         mp.startGame();
     });
 
-    // Bot Lobby Offline Play
-    document.getElementById('btn-bots-lobby').addEventListener('click', () => {
-        document.getElementById('lobby-modes').style.display = 'none';
-        const activeRoomPanel = document.getElementById('lobby-room-active');
-        activeRoomPanel.style.display = 'flex';
-        document.getElementById('lobby-radar-container').style.display = 'block';
-        document.getElementById('display-room-code').innerText = "OFFLINE";
-        
-        runBotsMatchmaking();
-    });
-
-    // Pass & Play
-    document.getElementById('btn-pass-play').addEventListener('click', () => {
-        isLocalGame = true;
-        isMultiplayerGame = false;
-        startNewGame([
-            { name: userProfile.name, isBot: false, avatar: userProfile.avatar },
-            { name: "Друг 1", isBot: false, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop" },
-            { name: "Друг 2", isBot: false, avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=80&auto=format&fit=crop" }
-        ]);
-    });
-
     // Invite friends
     document.getElementById('btn-invite-friends').addEventListener('click', () => {
+        const botUsername = "queuecomfybot";
         if (tg) {
             tg.shareToStory("https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop", {
                 text: "Зіграй зі мною в українську Монополію в Telegram! 🇺🇦🏦",
                 widget_link: {
-                    url: "https://t.me/queuecomfybot/app",
+                    url: `https://t.me/${botUsername}/app`,
                     name: "Грати зараз"
                 }
             });
         } else {
-            navigator.clipboard.writeText("https://t.me/queuecomfybot/app");
+            navigator.clipboard.writeText(`https://t.me/${botUsername}/app`);
             showModal("Запросити друзів", "<p>Посилання на бота скопійовано! Надішліть його друзям, щоб вони приєдналися.</p>", [
                 { text: "Чудово", class: "btn-primary" }
             ]);
         }
     });
 
-    // Shop
-    document.getElementById('btn-open-shop').addEventListener('click', () => {
-        switchScreen('screen-shop');
-        renderShopScreen(updateStarsBalances);
-    });
-
-    // Leaderboard
-    document.getElementById('btn-open-ranks').addEventListener('click', () => {
-        switchScreen('screen-leaderboard');
-        loadLeaderboard();
-    });
-
-    // Rules
-    document.getElementById('btn-open-rules').addEventListener('click', () => {
-        switchScreen('screen-rules');
-    });
-
-    // Exit Game button in GameHUD
+    // Exit Game in HUD
     document.getElementById('btn-game-quit').addEventListener('click', () => {
         showModal("Вихід з гри", "<p>Залишити ігрову кімнату?</p>", [
             { 
@@ -290,15 +222,6 @@ function setupMenuHandlers() {
             { text: "Скасувати", class: "btn-secondary" }
         ]);
     });
-
-    // Leaderboard tab selector
-    document.querySelectorAll('.leaderboard-tab').forEach(tab => {
-        tab.addEventListener('click', (e) => {
-            document.querySelectorAll('.leaderboard-tab').forEach(t => t.classList.remove('active'));
-            e.currentTarget.classList.add('active');
-            loadLeaderboard(e.currentTarget.getAttribute('data-tab'));
-        });
-    });
 }
 
 // Reset Lobby UI panel state
@@ -306,7 +229,6 @@ function initLobbyScreen() {
     document.getElementById('lobby-modes').style.display = 'flex';
     document.getElementById('lobby-code-input').style.display = 'none';
     document.getElementById('lobby-room-active').style.display = 'none';
-    document.getElementById('lobby-radar-container').style.display = 'none';
     document.getElementById('btn-start-multiplayer').style.display = 'none';
     document.getElementById('lobby-players-list').innerHTML = '';
     
@@ -337,86 +259,29 @@ function getWsUrl() {
     if (urlParams.has('ws_server')) {
         return urlParams.get('ws_server');
     }
-    // Default local PC WebSocket server
     return "ws://localhost:8765";
 }
 
-// Simulated matchmaking loading
-let matchmakingCancelFn = null;
-function runBotsMatchmaking() {
-    const listEl = document.getElementById('lobby-players-list');
-    const statusEl = document.getElementById('matchmaking-status');
-    
-    // Clear list
-    listEl.innerHTML = `
-        <div class="lobby-player-card">
-            <div class="player-card-info">
-                <img src="${userProfile.avatar}" class="lobby-avatar connected">
-                <span class="lobby-name">${userProfile.name} (Ви)</span>
-            </div>
-            <span class="lobby-status-text ready">Готовий</span>
-        </div>
-    `;
-    statusEl.innerText = "Пошук гравців в мережі...";
-
-    matchmakingCancelFn = startMatchmakingSimulation(
-        (playerJoined) => {
-            // Player joined callback
-            const card = document.createElement('div');
-            card.className = 'lobby-player-card';
-            card.innerHTML = `
-                <div class="player-card-info">
-                    <img src="${playerJoined.avatar}" class="lobby-avatar connected">
-                    <span class="lobby-name">${playerJoined.name}</span>
-                </div>
-                <span class="lobby-status-text ready">Підключено</span>
-            `;
-            listEl.appendChild(card);
-            statusEl.innerText = "Гравців знайдено! Створення сесії...";
-        },
-        (allBots) => {
-            // Ready callback
-            statusEl.innerText = "Матч знайдено! Початок гри...";
-            setTimeout(() => {
-                const setupList = [{ name: userProfile.name, isBot: false, avatar: userProfile.avatar, tokenSkin: shopData.equippedToken }];
-                allBots.forEach(bot => {
-                    setupList.push({ name: bot.name, isBot: true, avatar: bot.avatar });
-                });
-                isMultiplayerGame = false; // bot game is offline
-                startNewGame(setupList);
-            }, 1000);
-        }
-    );
-}
-
-// Start actual Monopoly game state loop
+// Start Monopoly game state loop
 function startNewGame(playerList) {
     game.reset();
     
-    const colors = ['cossack', 'cat', 'dumpling', 'sunflower']; // map to skins or basic
     playerList.forEach((p, idx) => {
-        game.addPlayer(p.name, `p-color-${idx}`, p.avatar, p.isBot, p.tokenSkin || 'classic');
+        game.addPlayer(p.name, `p-color-${idx}`, p.avatar, false);
     });
 
     switchScreen('screen-game');
     
-    // Render Board grid
     renderBoard(game, handleCellClick);
     renderPlayersHUD(game);
     updateGameLog(game);
 
-    // Setup active game buttons
     document.getElementById('btn-roll-dice').disabled = false;
     document.getElementById('btn-end-turn').disabled = true;
     
-    // Bind main action buttons
-    // Remove previous listeners
     const rollBtn = document.getElementById('btn-roll-dice');
     const endTurnBtn = document.getElementById('btn-end-turn');
     
-    rollBtn.onclick = null;
-    endTurnBtn.onclick = null;
-
     rollBtn.onclick = handleUserRoll;
     endTurnBtn.onclick = handleUserEndTurn;
 
@@ -436,44 +301,16 @@ function handleCellClick(index) {
             isSelf,
             () => {
                 // Upgrade handler
-                if (isMultiplayerGame) {
-                    if (game.currentPlayerIndex === mp.playerId && isSelf) {
-                        const success = game.upgradeProperty(mp.playerId, space.id);
-                        if (success) {
-                            mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
-                            renderBoard(game, handleCellClick);
-                            renderPlayersHUD(game);
-                            updateGameLog(game);
-                            hideModal();
-                        } else {
-                            alert("Недостатньо грошей для будівництва філії!");
-                        }
-                    }
-                } else if (!isLocalGame) {
-                    if (game.currentPlayerIndex === 0 && isSelf) {
-                        const success = game.upgradeProperty(0, space.id);
-                        if (success) {
-                            renderBoard(game, handleCellClick);
-                            renderPlayersHUD(game);
-                            updateGameLog(game);
-                            hideModal();
-                        } else {
-                            alert("Недостатньо грошей для будівництва філії!");
-                        }
-                    }
-                } else if (isLocalGame) {
-                    // In local mode, active player can upgrade their own land
-                    const activePIdx = game.currentPlayerIndex;
-                    if (isSelf) {
-                        const success = game.upgradeProperty(activePIdx, space.id);
-                        if (success) {
-                            renderBoard(game, handleCellClick);
-                            renderPlayersHUD(game);
-                            updateGameLog(game);
-                            hideModal();
-                        } else {
-                            alert("Недостатньо грошей для будівництва філії!");
-                        }
+                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId && isSelf) {
+                    const success = game.upgradeProperty(mp.playerId, space.id);
+                    if (success) {
+                        mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    } else {
+                        alert("Недостатньо грошей для будівництва філії!");
                     }
                 }
             }
@@ -488,7 +325,7 @@ function handleUserRoll() {
 
     const activePlayer = game.getCurrentPlayer();
 
-    // 1. Check if in Jail
+    // Check if in Jail
     if (activePlayer.inJail) {
         showModal("Вихід з Укриття", "<p>Ви перебуваєте в укритті через повітряну тривогу. Оберіть дію:</p>", [
             {
@@ -502,7 +339,7 @@ function handleUserRoll() {
                         }
                         renderPlayersHUD(game);
                         updateGameLog(game);
-                        rollBtn.disabled = false; // allow to roll movement now!
+                        rollBtn.disabled = false; // allow to roll movement now
                     }
                 }
             },
@@ -518,14 +355,11 @@ function handleUserRoll() {
                     updateGameLog(game);
                     
                     if (rollResult.success) {
-                        // Out of jail and moved!
                         animateDiceRoll(rollResult.d1, rollResult.d2, () => {
-                            // Already moved inside tryGetOutJail
                             updatePlayerTokens(game);
                             resolveLandingSpace(activePlayer.id, activePlayer.position, rollResult.sum);
                         });
                     } else {
-                        // Failed, end turn immediately
                         animateDiceRoll(rollResult.d1, rollResult.d2, () => {
                             document.getElementById('btn-end-turn').disabled = false;
                         });
@@ -536,7 +370,7 @@ function handleUserRoll() {
         return;
     }
 
-    // 2. Normal Roll
+    // Normal Roll
     const { d1, d2, sum } = game.rollDice();
     game.log(`${activePlayer.name} кинув кубики: ${d1}:${d2}`, 'system');
     
@@ -548,11 +382,8 @@ function handleUserRoll() {
     game.movePlayer(activePlayer.id, sum);
 
     animateDiceRoll(d1, d2, () => {
-        // Start movement animation
         animatePlayerMovement(game, activePlayer.id, fromPos, sum, () => {
             renderPlayersHUD(game);
-            
-            // Resolve Landing Cell
             resolveLandingSpace(activePlayer.id, activePlayer.position, sum);
         });
     });
@@ -567,17 +398,14 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
     if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
         if (space.owner === null) {
             // Unowned: Offer purchase
-            if (player.isBot) return;
-
             if (isMultiplayerGame && playerId !== mp.playerId) {
-                // Remote player landed on unowned property. Just wait for their action.
+                // Remote player landed. Wait for action.
                 return;
             }
 
             showPropertyModal(
                 space,
                 () => {
-                    // Buy confirm
                     const success = game.purchaseProperty(playerId, spaceId);
                     if (success) {
                         if (isMultiplayerGame) {
@@ -592,7 +420,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
                     endTurnBtn.disabled = false;
                 },
                 () => {
-                    // Buy decline
                     game.log(`${player.name} відмовився купувати ${space.name}`);
                     updateGameLog(game);
                     endTurnBtn.disabled = false;
@@ -608,7 +435,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             updateGameLog(game);
             
             if (player.money < 0) {
-                // Debt/Bankruptcy flow
                 if (isMultiplayerGame) {
                     if (playerId === mp.playerId) {
                         resolveUserDebt(playerId, rent);
@@ -632,7 +458,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             }
         }
     } else if (space.type === SPACE_TYPES.FREE_PARKING) {
-        // Collect donation
         const claimed = game.claimFreeParking(playerId);
         if (isMultiplayerGame && claimed > 0 && playerId === mp.playerId) {
             mp.sendAction({ type: 'claim_parking', playerId, amount: claimed });
@@ -645,7 +470,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             endTurnBtn.disabled = false;
         }
     } else if (space.type === SPACE_TYPES.GO_TO_JAIL) {
-        // Go to jail
         game.sendToJail(playerId);
         if (isMultiplayerGame && playerId === mp.playerId) {
             mp.sendAction({ type: 'go_to_jail', playerId });
@@ -659,7 +483,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             endTurnBtn.disabled = false;
         }
     } else if (space.type === SPACE_TYPES.CHANCE) {
-        // Draw Chance Card
         if (isMultiplayerGame) {
             if (playerId === mp.playerId) {
                 const cardIndex = Math.floor(Math.random() * CHANCE_CARDS.length);
@@ -676,7 +499,6 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             });
         }
     } else {
-        // Start or jail visiting
         if (isMultiplayerGame) {
             if (playerId === mp.playerId) endTurnBtn.disabled = false;
         } else {
@@ -747,7 +569,6 @@ function resolveUserDebt(playerId, rentAmount) {
             <div class="shop-grid" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
         `;
 
-        // Get owned assets with branches to sell
         const branchesToSell = game.spaces.filter(s => s.owner === playerId && s.branches > 0);
         branchesToSell.forEach(s => {
             const sellVal = Math.floor(s.branchCost * 0.5);
@@ -758,7 +579,6 @@ function resolveUserDebt(playerId, rentAmount) {
             `;
         });
 
-        // Get owned assets without branches to sell property
         const propsToSell = game.spaces.filter(s => s.owner === playerId && (!s.branches || s.branches === 0));
         propsToSell.forEach(s => {
             const sellVal = Math.floor(s.price * 0.5);
@@ -791,7 +611,6 @@ function resolveUserDebt(playerId, rentAmount) {
                 text: "Оголосити Банкрутство 💥",
                 class: "btn-danger",
                 onClick: () => {
-                    // Landed space details
                     const currentSpace = game.spaces[player.position];
                     let beneficiaryId = null;
                     if (currentSpace.owner !== null && currentSpace.owner !== playerId) {
@@ -818,7 +637,6 @@ function resolveUserDebt(playerId, rentAmount) {
 
         showModal("Нестача коштів!", itemsHtml, buttons);
 
-        // Bind clicks
         branchesToSell.forEach(s => {
             document.getElementById(`btn-sell-branch-${s.id}`).onclick = () => {
                 game.sellBranch(s.id);
@@ -828,17 +646,20 @@ function resolveUserDebt(playerId, rentAmount) {
                 renderBoard(game, handleCellClick);
                 renderPlayersHUD(game);
                 updateGameLog(game);
-                showDebtModal(); // redraw
+                showDebtModal();
             };
         });
 
         propsToSell.forEach(s => {
             document.getElementById(`btn-sell-prop-${s.id}`).onclick = () => {
                 game.sellProperty(s.id);
+                if (isMultiplayerGame) {
+                    mp.sendAction({ type: 'sell_property', playerId, spaceId: s.id });
+                }
                 renderBoard(game, handleCellClick);
                 renderPlayersHUD(game);
                 updateGameLog(game);
-                showDebtModal(); // redraw
+                showDebtModal();
             };
         });
     }
@@ -850,7 +671,6 @@ function resolveUserDebt(playerId, rentAmount) {
 function handleUserEndTurn() {
     document.getElementById('btn-end-turn').disabled = true;
 
-    // Check if only 1 active remains or turn limits exceeded
     if (game.isGameOver) {
         showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
         return;
@@ -872,20 +692,16 @@ function handleUserEndTurn() {
     processNextTurn();
 }
 
-// Coordinates turns routing (User vs Bots)
+// Coordinates turns routing (User vs User only)
 function processNextTurn() {
     const activePlayer = game.getCurrentPlayer();
-    
-    // UI marker update
     document.getElementById('current-player-name').innerText = activePlayer.name;
 
     if (isMultiplayerGame) {
-        // Disable User controls by default
         document.getElementById('btn-roll-dice').disabled = true;
         document.getElementById('btn-end-turn').disabled = true;
 
         if (activePlayer.id === mp.playerId) {
-            // Enable local player controls
             document.getElementById('btn-roll-dice').disabled = false;
             game.log(`Ваш хід (${activePlayer.name}). Кидайте кубики!`);
             updateGameLog(game);
@@ -895,141 +711,6 @@ function processNextTurn() {
         }
         return;
     }
-
-    if (activePlayer.isBot) {
-        // Disable User controls
-        document.getElementById('btn-roll-dice').disabled = true;
-        document.getElementById('btn-end-turn').disabled = true;
-
-        // Run bot turn simulation logic
-        BotAI.handleTurn(
-            game,
-            activePlayer.id,
-            (botLog) => {
-                // Log action
-                game.log(botLog);
-                updateGameLog(game);
-            },
-            (action) => {
-                // UI render callback
-                if (action.type === 'roll') {
-                    // Roll
-                    animateDiceRoll(action.result.d1, action.result.d2, () => {});
-                } else if (action.type === 'move') {
-                    // Move token
-                    updatePlayerTokens(game);
-                } else if (action.type === 'buy' || action.type === 'pay_rent' || action.type === 'upgrade' || action.type === 'sell_branch' || action.type === 'sell_property' || action.type === 'claim_parking' || action.type === 'go_to_jail') {
-                    renderBoard(game, handleCellClick);
-                    renderPlayersHUD(game);
-                } else if (action.type === 'chat_reaction') {
-                    // Show emoji reaction bubble above bot's HUD card
-                    showEmojiBubble(activePlayer.id, action.emoji);
-                } else if (action.type === 'draw_chance') {
-                    // Chance
-                } else if (action.type === 'bankrupt') {
-                    renderBoard(game, handleCellClick);
-                    renderPlayersHUD(game);
-                }
-            },
-            () => {
-                // Completed callback
-                if (game.isGameOver) {
-                    showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
-                    return;
-                }
-                game.nextTurn();
-                renderPlayersHUD(game);
-                updateGameLog(game);
-                processNextTurn(); // next
-            }
-        );
-    } else {
-        // Enable User controls
-        document.getElementById('btn-roll-dice').disabled = false;
-        document.getElementById('btn-end-turn').disabled = true;
-        game.log(`Ваш хід (${activePlayer.name}). Кидайте кубики!`);
-        updateGameLog(game);
-    }
-}
-
-// WOW factor: Floating bot emoji bubble reactions
-function showEmojiBubble(playerId, emoji) {
-    // Find player HUD card
-    const hudCards = document.querySelectorAll('.player-hud-card');
-    const targetCard = hudCards[playerId];
-    
-    if (targetCard) {
-        // Create bubble element
-        const bubble = document.createElement('div');
-        bubble.innerText = emoji;
-        bubble.style.position = 'absolute';
-        bubble.style.top = '-20px';
-        bubble.style.left = '50%';
-        bubble.style.transform = 'translateX(-50%)';
-        bubble.style.background = 'rgba(255, 255, 255, 0.95)';
-        bubble.style.color = '#000';
-        bubble.style.border = '1px solid rgba(0,0,0,0.1)';
-        bubble.style.padding = '0.2rem 0.5rem';
-        bubble.style.borderRadius = '20px';
-        bubble.style.fontSize = '1.1rem';
-        bubble.style.zIndex = '500';
-        bubble.style.boxShadow = '0 3px 10px rgba(0,0,0,0.2)';
-        bubble.style.animation = 'bubbleFloatUp 1.2s ease forwards';
-        
-        // Add dynamic floating keyframe style inline
-        const style = document.createElement('style');
-        style.innerText = `
-            @keyframes bubbleFloatUp {
-                0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
-                20% { opacity: 1; transform: translate(-50%, -15px) scale(1.1); }
-                80% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
-                100% { opacity: 0; transform: translate(-50%, -35px) scale(0.8); }
-            }
-        `;
-        document.head.appendChild(style);
-
-        targetCard.appendChild(bubble);
-        setTimeout(() => {
-            bubble.remove();
-            style.remove();
-        }, 1200);
-    }
-}
-
-// Leaderboard Screen content generator
-function loadLeaderboard(tab = 'weekly') {
-    const listEl = document.getElementById('leaderboard-list');
-    listEl.innerHTML = '';
-
-    // Mock leader rankings rows
-    let leaders = [
-        { name: "@ivan_invest", worth: "₴18,500", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&auto=format&fit=crop" },
-        { name: "@sveta_lviv", worth: "₴16,900", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&auto=format&fit=crop" },
-        { name: "@andriy_lviv", worth: "₴14,200", avatar: "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=80&auto=format&fit=crop" }
-    ];
-
-    if (tab === 'alltime') {
-        leaders = [
-            { name: "@dmytro_monopoly", worth: "₴95,000", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" },
-            { name: "@taras_capital", worth: "₴89,400", avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&auto=format&fit=crop" },
-            { name: "@olga_kiev", worth: "₴72,100", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&auto=format&fit=crop" },
-            { name: "@maks_tg", worth: "₴68,300", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&auto=format&fit=crop" }
-        ];
-    }
-
-    leaders.forEach((leader, idx) => {
-        const row = document.createElement('div');
-        row.className = 'leaderboard-row';
-        row.innerHTML = `
-            <div class="leaderboard-row-left">
-                <span class="row-rank">${tab === 'alltime' ? idx + 4 : idx + 4}</span>
-                <img src="${leader.avatar}" class="row-avatar">
-                <span class="row-name">${leader.name}</span>
-            </div>
-            <span class="row-worth">${leader.worth}</span>
-        `;
-        listEl.appendChild(row);
-    });
 }
 
 // Handler for remote events sent over WebSockets
@@ -1071,7 +752,6 @@ function handleRemoteAction(action) {
             break;
 
         case 'pay_rent':
-            // Automatically processed inside resolveLandingSpace
             break;
 
         case 'claim_parking':
