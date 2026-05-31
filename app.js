@@ -30,7 +30,7 @@ mp.onPlayerLeftCallback = (name) => {
 let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
 
 // Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
-const DONATE_URL = "https://send.monobank.ua/jar/YOUR_JAR_ID";
+const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
 
 // Telegram WebApp Initialization
 const tg = window.Telegram?.WebApp;
