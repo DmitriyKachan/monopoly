@@ -56,9 +56,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // Set callback for player HUD trading clicks
     setPlayerClickCallback(handlePlayerClick);
 
+    // Check for startapp parameters (auto-joining room)
+    let hasStartParam = false;
+    if (tg) {
+        const startParam = tg.initDataUnsafe?.start_param;
+        if (startParam && startParam.length === 4) {
+            hasStartParam = true;
+            autoJoinRoomByCode(startParam);
+        }
+    }
+
     // Fade out splash screen after 1.5s
     setTimeout(() => {
-        switchScreen('screen-menu');
+        if (!hasStartParam) {
+            switchScreen('screen-menu');
+        }
     }, 1500);
 
     setupMenuHandlers();
@@ -81,6 +93,98 @@ function switchScreen(screenId) {
             tg.BackButton.show();
         }
     }
+}
+
+// Auto-join room helper (for Telegram startapp redirect links)
+function autoJoinRoomByCode(code) {
+    switchScreen('screen-lobby');
+    document.getElementById('lobby-modes').style.display = 'none';
+    document.getElementById('lobby-code-input').style.display = 'none';
+    const activeRoomPanel = document.getElementById('lobby-room-active');
+    activeRoomPanel.style.display = 'flex';
+    
+    document.getElementById('matchmaking-status').innerText = `Підключення до кімнати ${code}...`;
+
+    mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
+        mp.joinRoom(code, userProfile.name, userProfile.avatar);
+    });
+
+    mp.onPlayerUpdateCallback = (players) => {
+        document.getElementById('matchmaking-status').innerText = "Очікування старту від хоста...";
+        document.getElementById('display-room-code').innerText = mp.roomCode;
+        renderLobbyPlayers(players);
+        document.getElementById('btn-start-multiplayer').style.display = 'none';
+    };
+
+    mp.onGameStartCallback = () => {
+        isMultiplayerGame = true;
+        startNewGame(mp.playersList.map(p => ({
+            name: p.name,
+            isBot: false,
+            avatar: p.avatar
+        })));
+    };
+
+    mp.onActionCallback = handleRemoteAction;
+}
+
+// Create Room Workflow helper (handles normal creation and direct TG invitation creation)
+function createRoomWorkflow(autoShare = false) {
+    switchScreen('screen-lobby');
+    document.getElementById('lobby-modes').style.display = 'none';
+    document.getElementById('lobby-code-input').style.display = 'none';
+    const activeRoomPanel = document.getElementById('lobby-room-active');
+    activeRoomPanel.style.display = 'flex';
+    
+    document.getElementById('matchmaking-status').innerText = "Підключення до WSS сервера...";
+    
+    mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
+        document.getElementById('matchmaking-status').innerText = "Створення кімнати...";
+        mp.createRoom(userProfile.name, userProfile.avatar);
+    });
+
+    let shareLinkOpened = false;
+
+    mp.onPlayerUpdateCallback = (players) => {
+        document.getElementById('matchmaking-status').innerText = "Очікування друзів...";
+        document.getElementById('display-room-code').innerText = mp.roomCode;
+        renderLobbyPlayers(players);
+        
+        const startBtn = document.getElementById('btn-start-multiplayer');
+        if (players.length >= 2) {
+            startBtn.style.display = 'block';
+        } else {
+            startBtn.style.display = 'none';
+        }
+
+        if (autoShare && mp.roomCode && !shareLinkOpened) {
+            shareLinkOpened = true;
+            const botUsername = "queuecomfybot";
+            const shareUrl = `https://t.me/${botUsername}/app?startapp=${mp.roomCode}`;
+            const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
+            const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
+            if (tg) {
+                tg.openTelegramLink(telegramShareLink);
+            } else {
+                navigator.clipboard.writeText(shareUrl);
+                showModal("Запросити друзів", `<p>Код кімнати: <strong>${mp.roomCode}</strong>. Посилання скопійовано! Надішліть його другу.</p>`, [
+                    { text: "Чудово", class: "btn-primary" }
+                ]);
+            }
+        }
+    };
+
+    mp.onGameStartCallback = () => {
+        isMultiplayerGame = true;
+        startNewGame(mp.playersList.map(p => ({
+            name: p.name,
+            isBot: false,
+            avatar: p.avatar
+        })));
+    };
+
+    mp.onActionCallback = handleRemoteAction;
 }
 
 function setupBackButton() {
@@ -127,40 +231,7 @@ function setupMenuHandlers() {
 
     // Create Room
     document.getElementById('btn-create-lobby').addEventListener('click', () => {
-        document.getElementById('lobby-modes').style.display = 'none';
-        const activeRoomPanel = document.getElementById('lobby-room-active');
-        activeRoomPanel.style.display = 'flex';
-        
-        document.getElementById('matchmaking-status').innerText = "Підключення до WSS сервера...";
-        
-        mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
-            document.getElementById('matchmaking-status').innerText = "Створення кімнати...";
-            mp.createRoom(userProfile.name, userProfile.avatar);
-        });
-
-        mp.onPlayerUpdateCallback = (players) => {
-            document.getElementById('matchmaking-status').innerText = "Очікування друзів...";
-            document.getElementById('display-room-code').innerText = mp.roomCode;
-            renderLobbyPlayers(players);
-            
-            const startBtn = document.getElementById('btn-start-multiplayer');
-            if (players.length >= 2) {
-                startBtn.style.display = 'block';
-            } else {
-                startBtn.style.display = 'none';
-            }
-        };
-
-        mp.onGameStartCallback = () => {
-            isMultiplayerGame = true;
-            startNewGame(mp.playersList.map(p => ({
-                name: p.name,
-                isBot: false,
-                avatar: p.avatar
-            })));
-        };
-
-        mp.onActionCallback = handleRemoteAction;
+        createRoomWorkflow(false);
     });
 
     // Join Room panel
@@ -218,21 +289,9 @@ function setupMenuHandlers() {
         mp.startGame();
     });
 
-    // Invite friends
+    // Invite friends (auto-creates lobby and opens native TG share dialog with room start parameter)
     document.getElementById('btn-invite-friends').addEventListener('click', () => {
-        const botUsername = "queuecomfybot";
-        const shareUrl = `https://t.me/${botUsername}/app`;
-        const shareText = "Зіграй зі мною в українську Монополію в Telegram! 🇺🇦🏦";
-        const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-
-        if (tg) {
-            tg.openTelegramLink(telegramShareLink);
-        } else {
-            navigator.clipboard.writeText(shareUrl);
-            showModal("Запросити друзів", "<p>Посилання на бота скопійовано! Надішліть його друзям, щоб вони приєдналися.</p>", [
-                { text: "Чудово", class: "btn-primary" }
-            ]);
-        }
+        createRoomWorkflow(true);
     });
 
     // Exit Game in HUD
