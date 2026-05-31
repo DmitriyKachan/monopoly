@@ -37,7 +37,7 @@ const tg = window.Telegram?.WebApp;
 
 // AdsGram Configuration (Rewarded Video Ads)
 // По умолчанию используется тестовый ID "int-8673". Замените его на ваш после регистрации на adsgram.ai
-const ADSGRAM_BLOCK_ID = "int-8673"; 
+const ADSGRAM_BLOCK_ID = "33680"; 
 let AdController = null;
 
 if (window.Adsgram) {
