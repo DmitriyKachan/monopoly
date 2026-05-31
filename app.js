@@ -29,6 +29,9 @@ mp.onPlayerLeftCallback = (name) => {
 
 let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
 
+// Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
+const DONATE_URL = "https://send.monobank.ua/jar/YOUR_JAR_ID";
+
 // Telegram WebApp Initialization
 const tg = window.Telegram?.WebApp;
 
@@ -293,6 +296,24 @@ function setupMenuHandlers() {
     document.getElementById('btn-invite-friends').addEventListener('click', () => {
         createRoomWorkflow(true);
     });
+
+    // Donate Monobank Button Handler
+    const btnDonate = document.getElementById('btn-donate-mono');
+    if (btnDonate) {
+        btnDonate.addEventListener('click', () => {
+            if (DONATE_URL.includes("YOUR_JAR_ID")) {
+                showModal("Підтримка гри ☕️", "<p>Наразі посилання на банку не налаштовано розробником. Будь ласка, зверніться до адміністратора гри!</p>", [
+                    { text: "Зрозуміло", class: "btn-secondary" }
+                ]);
+            } else {
+                if (tg) {
+                    tg.openLink(DONATE_URL);
+                } else {
+                    window.open(DONATE_URL, '_blank');
+                }
+            }
+        });
+    }
 
     // Exit Game in HUD
     document.getElementById('btn-game-quit').addEventListener('click', () => {
