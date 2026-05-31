@@ -133,24 +133,12 @@ def main():
                                 ]
                             }
                             
-                            # Try to send welcome banner photo first
-                            banner_url = "https://dmitriykachan.github.io/monopoly/welcome_banner.png"
-                            res = api_request(token, "sendPhoto", {
+                            api_request(token, "sendMessage", {
                                 "chat_id": chat_id,
-                                "photo": banner_url,
-                                "caption": welcome_msg,
+                                "text": welcome_msg,
                                 "parse_mode": "Markdown",
                                 "reply_markup": keyboard
                             })
-                            
-                            # Fallback to sendMessage if photo upload fails or dynamic link doesn't work
-                            if not res or not res.get("ok"):
-                                api_request(token, "sendMessage", {
-                                    "chat_id": chat_id,
-                                    "text": welcome_msg,
-                                    "parse_mode": "Markdown",
-                                    "reply_markup": keyboard
-                                })
                             print(f"Надіслано привітання для {user.get('username', first_name)}")
             
         except KeyboardInterrupt:
