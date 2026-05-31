@@ -336,8 +336,11 @@ function handleCellClick(index) {
             return;
         }
 
-        const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
-        const allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
+        let allOwnedBySelf = false;
+        if (space.group) {
+            const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
+            allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
+        }
 
         showPropertyModal(
             space,
