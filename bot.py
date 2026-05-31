@@ -110,10 +110,15 @@ def main():
                                 dynamic_web_app_url = web_app_url
                             
                             welcome_msg = (
-                                f"Вітаємо, {first_name}! 🇺🇦🏦\n\n"
-                                "Ласкаво просимо до Монополії з відомими українськими брендами.\n"
-                                "Купуйте АТБ, Нову Пошту, Монобанк, будуйте філії та збирайте капітал у гривнях!\n\n"
-                                "Натисніть кнопку нижче, щоб розпочати гру прямо в Telegram:"
+                                f"Привіт, {first_name}! 🏦🇺🇦\n\n"
+                                "Ласкаво просимо до *Монополії Україна* — преміальної бізнес-стратегії прямо в Telegram!\n\n"
+                                "💼 *Твоя мета:* Створити найпотужнішу імперію брендів, викупити АТБ, Нову Пошту, Монобанк, будувати прибуткові філії та збанкрутувати суперників!\n\n"
+                                "⚡️ *Особливості гри:*\n"
+                                "• Нативне запрошення друзів одним кліком\n"
+                                "• Зручна система торгівлі та обміну\n"
+                                "• Розумний автономний бот АТБ-Борис 🤖 для одиночної гри\n"
+                                "• Преміальний 3D-дизайн та неонові ефекти\n\n"
+                                "Натискай кнопку нижче та розпочинай свою бізнес-імперію прямо зараз! 👇"
                             )
                             
                             # Inline Keyboard Markup with WebApp link
@@ -128,11 +133,24 @@ def main():
                                 ]
                             }
                             
-                            api_request(token, "sendMessage", {
+                            # Try to send welcome banner photo first
+                            banner_url = "https://dmitriykachan.github.io/monopoly/welcome_banner.png"
+                            res = api_request(token, "sendPhoto", {
                                 "chat_id": chat_id,
-                                "text": welcome_msg,
+                                "photo": banner_url,
+                                "caption": welcome_msg,
+                                "parse_mode": "Markdown",
                                 "reply_markup": keyboard
                             })
+                            
+                            # Fallback to sendMessage if photo upload fails or dynamic link doesn't work
+                            if not res or not res.get("ok"):
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": welcome_msg,
+                                    "parse_mode": "Markdown",
+                                    "reply_markup": keyboard
+                                })
                             print(f"Надіслано привітання для {user.get('username', first_name)}")
             
         except KeyboardInterrupt:
