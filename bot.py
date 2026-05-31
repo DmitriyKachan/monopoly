@@ -90,7 +90,18 @@ def main():
     print("Початок прослуховування повідомлень (Long Polling)... Натисніть Ctrl+C для виходу.")
     print("-" * 60)
 
-    offset = 0
+    # Сбрасываем очередь старых обновлений при старте, чтобы не отвечать на старые сообщения
+    try:
+        print("Скидання черги старих повідомлень...")
+        clear_updates = api_request(token, "getUpdates", {"offset": -1, "timeout": 0})
+        if clear_updates and clear_updates.get("ok") and clear_updates["result"]:
+            offset = clear_updates["result"][-1]["update_id"] + 1
+            print(f"Чергу скинуто. Поточний offset: {offset}")
+        else:
+            offset = 0
+    except Exception as e:
+        print(f"Помилка при скиданні черги: {e}")
+        offset = 0
     while True:
         try:
             updates = api_request(token, "getUpdates", {"offset": offset, "timeout": 20})
