@@ -108,6 +108,7 @@ export function renderBoard(gameState, onCellClick) {
 
         // 6. Owner label
         if (space.owner !== null) {
+            cell.classList.add(`owned-p${space.owner}`);
             const ownerDot = document.createElement('div');
             ownerDot.className = `cell-owner-indicator p-color-${space.owner}`;
             cell.appendChild(ownerDot);
