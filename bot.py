@@ -12,10 +12,23 @@ CONFIG_FILE = 'config.json'
 DEFAULT_TOKEN = '8954602175:AAGuHQ-UmyqGsgGlxcQ8m_VyIHoRAGUMFZA'
 
 def load_config():
+    # Проверяем переменные окружения (для безопасного запуска на хостинге)
+    env_token = os.environ.get("TELEGRAM_TOKEN")
+    env_web_url = os.environ.get("WEB_APP_URL")
+    env_ws_url = os.environ.get("WS_SERVER_URL")
+    
+    if env_token:
+        return {
+            "telegram_token": env_token,
+            "web_app_url": env_web_url or "https://dmitriykachan.github.io/monopoly/?v=7",
+            "ws_server_url": env_ws_url or "wss://jiubehb-monopoly-backend.hf.space"
+        }
+
     if not os.path.exists(CONFIG_FILE):
         config = {
             "telegram_token": DEFAULT_TOKEN,
-            "web_app_url": "https://dmytro-monopoly.github.io/" # Example URL. Replace with your actual HTTPS URL
+            "web_app_url": "https://dmitriykachan.github.io/monopoly/?v=7",
+            "ws_server_url": "wss://jiubehb-monopoly-backend.hf.space"
         }
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
