@@ -731,23 +731,24 @@ body {
 .cell-branches {
     display: flex;
     justify-content: center;
-    gap: 1px;
+    gap: 2px;
     margin-top: 1px;
-    height: 4px;
+    height: 7px;
 }
 
 .cell-branch-dot {
-    width: 4px;
-    height: 4px;
+    width: 7px;
+    height: 7px;
     background: var(--color-yellow);
-    border-radius: 50%;
+    border-radius: 2px;
     box-shadow: 0 0 2px var(--color-yellow);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.cell-branch-dot.p-color-0 { background: #3b82f6; box-shadow: 0 0 3px rgba(59, 130, 246, 0.8); }
-.cell-branch-dot.p-color-1 { background: #10b981; box-shadow: 0 0 3px rgba(16, 185, 129, 0.8); }
-.cell-branch-dot.p-color-2 { background: #f43f5e; box-shadow: 0 0 3px rgba(244, 63, 94, 0.8); }
-.cell-branch-dot.p-color-3 { background: #eab308; box-shadow: 0 0 3px rgba(234, 179, 8, 0.8); }
+.cell-branch-dot.p-color-0 { background: #3b82f6; box-shadow: 0 0 4px rgba(59, 130, 246, 0.8); }
+.cell-branch-dot.p-color-1 { background: #10b981; box-shadow: 0 0 4px rgba(16, 185, 129, 0.8); }
+.cell-branch-dot.p-color-2 { background: #f43f5e; box-shadow: 0 0 4px rgba(244, 63, 94, 0.8); }
+.cell-branch-dot.p-color-3 { background: #eab308; box-shadow: 0 0 4px rgba(234, 179, 8, 0.8); }
 
 /* Special corner properties styling */
 .corner-cell {
@@ -781,11 +782,11 @@ body {
 }
 
 .token {
-    width: 17px;
-    height: 17px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     border: 2px solid #ffffff;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.7), 0 0 8px currentColor;
     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -884,32 +885,44 @@ body {
 .player-hud-card.p-border-2::before { background: #f43f5e; box-shadow: 0 0 8px rgba(244, 63, 94, 0.5); }
 .player-hud-card.p-border-3::before { background: #eab308; box-shadow: 0 0 8px rgba(234, 179, 8, 0.5); }
 
-/* Inactive player border-colors */
-.player-hud-card.p-border-0 { border-color: rgba(59, 130, 246, 0.2); }
-.player-hud-card.p-border-1 { border-color: rgba(16, 185, 129, 0.2); }
-.player-hud-card.p-border-2 { border-color: rgba(244, 63, 94, 0.2); }
-.player-hud-card.p-border-3 { border-color: rgba(234, 179, 8, 0.2); }
+/* Inactive player border-colors & base background fills */
+.player-hud-card.p-border-0 {
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    background: rgba(59, 130, 246, 0.18) !important;
+}
+.player-hud-card.p-border-1 {
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    background: rgba(16, 185, 129, 0.18) !important;
+}
+.player-hud-card.p-border-2 {
+    border-color: rgba(244, 63, 94, 0.4) !important;
+    background: rgba(244, 63, 94, 0.18) !important;
+}
+.player-hud-card.p-border-3 {
+    border-color: rgba(234, 179, 8, 0.4) !important;
+    background: rgba(234, 179, 8, 0.18) !important;
+}
 
-/* Active glowing HUD styles */
+/* Active glowing HUD styles & background highlights */
 .player-hud-card.active.p-border-0 {
-    border-color: #3b82f6;
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.6) !important;
+    background: rgba(59, 130, 246, 0.35) !important;
 }
 .player-hud-card.active.p-border-1 {
-    border-color: #10b981;
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
-    background: rgba(16, 185, 129, 0.08);
+    border-color: #10b981 !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.6) !important;
+    background: rgba(16, 185, 129, 0.35) !important;
 }
 .player-hud-card.active.p-border-2 {
-    border-color: #f43f5e;
-    box-shadow: 0 0 12px rgba(244, 63, 94, 0.4);
-    background: rgba(244, 63, 94, 0.08);
+    border-color: #f43f5e !important;
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.6) !important;
+    background: rgba(244, 63, 94, 0.35) !important;
 }
 .player-hud-card.active.p-border-3 {
-    border-color: #eab308;
-    box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
-    background: rgba(234, 179, 8, 0.08);
+    border-color: #eab308 !important;
+    box-shadow: 0 0 15px rgba(234, 179, 8, 0.6) !important;
+    background: rgba(234, 179, 8, 0.35) !important;
 }
 
 .player-hud-card.bankrupt {
