@@ -35,6 +35,17 @@ const DONATE_URL = "https://send.monobank.ua/jar/YOUR_JAR_ID";
 // Telegram WebApp Initialization
 const tg = window.Telegram?.WebApp;
 
+// AdsGram Configuration (Rewarded Video Ads)
+// По умолчанию используется тестовый ID "int-8673". Замените его на ваш после регистрации на adsgram.ai
+const ADSGRAM_BLOCK_ID = "int-8673"; 
+let AdController = null;
+
+if (window.Adsgram) {
+    AdController = window.Adsgram.createAdListener({
+        blockId: ADSGRAM_BLOCK_ID
+    });
+}
+
 if (tg) {
     tg.ready();
     tg.expand();
@@ -315,6 +326,47 @@ function setupMenuHandlers() {
         });
     }
 
+    // AdsGram Rewarded Video Ad Handler
+    const btnWatchAd = document.getElementById('btn-watch-ad');
+    if (btnWatchAd) {
+        btnWatchAd.addEventListener('click', () => {
+            if (!AdController && window.Adsgram) {
+                AdController = window.Adsgram.createAdListener({
+                    blockId: ADSGRAM_BLOCK_ID
+                });
+            }
+
+            if (AdController) {
+                btnWatchAd.disabled = true;
+                const originalText = btnWatchAd.querySelector('.btn-text').innerText;
+                btnWatchAd.querySelector('.btn-text').innerText = "Завантаження реклами...";
+
+                AdController.show().then((result) => {
+                    btnWatchAd.disabled = false;
+                    btnWatchAd.querySelector('.btn-text').innerText = originalText;
+
+                    userProfile.startingBonus = 1500; // +1.5M ₴
+                    showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
+                        { text: "Чудово! 🚀", class: "btn-primary" }
+                    ]);
+                }).catch((result) => {
+                    btnWatchAd.disabled = false;
+                    btnWatchAd.querySelector('.btn-text').innerText = originalText;
+
+                    console.warn("AdsGram Error:", result);
+                    const errorMsg = result.description || result.error || "перегляд відхилено";
+                    showModal("Рекламу перервано ⚠️", `<p>Для отримання бонусу необхідно переглянути відео повністю без пропусків. Спробуйте ще раз! (Статус: ${errorMsg})</p>`, [
+                        { text: "Спробувати знову", class: "btn-secondary" }
+                    ]);
+                });
+            } else {
+                showModal("Помилка завантаження ⚠️", "<p>Служба реклами AdsGram наразі недоступна. Будь ласка, перевірте з'єднання з інтернетом або спробуйте пізніше.</p>", [
+                    { text: "Зрозуміло", class: "btn-secondary" }
+                ]);
+            }
+        });
+    }
+
     // Exit Game in HUD
     document.getElementById('btn-game-quit').addEventListener('click', () => {
         showModal("Вихід з гри", "<p>Залишити ігрову кімнату?</p>", [
@@ -374,8 +426,14 @@ function startNewGame(playerList) {
     game.reset();
     
     playerList.forEach((p, idx) => {
-        game.addPlayer(p.name, `p-color-${idx}`, p.avatar, false);
+        const addedPlayer = game.addPlayer(p.name, `p-color-${idx}`, p.avatar, p.isBot || false);
+        // Добавляем бонус за просмотр рекламы, если он есть
+        if (!p.isBot && p.name === userProfile.name && userProfile.startingBonus) {
+            addedPlayer.money += userProfile.startingBonus;
+        }
     });
+    // Сбрасываем бонус после начала игры
+    userProfile.startingBonus = 0;
 
     switchScreen('screen-game');
     
