@@ -9,7 +9,7 @@ import urllib.request
 import urllib.parse
 
 CONFIG_FILE = 'config.json'
-DEFAULT_TOKEN = '8954602175:AAGuHQ-UmyqGsgGlxcQ8m_VyIHoRAGUMFZA'
+DEFAULT_TOKEN = ''
 
 def load_config():
     # Проверяем переменные окружения (для безопасного запуска на хостинге)
