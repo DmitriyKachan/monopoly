@@ -221,16 +221,14 @@ function setupMenuHandlers() {
     // Invite friends
     document.getElementById('btn-invite-friends').addEventListener('click', () => {
         const botUsername = "queuecomfybot";
+        const shareUrl = `https://t.me/${botUsername}/app`;
+        const shareText = "Зіграй зі мною в українську Монополію в Telegram! 🇺🇦🏦";
+        const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
         if (tg) {
-            tg.shareToStory("https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&auto=format&fit=crop", {
-                text: "Зіграй зі мною в українську Монополію в Telegram! 🇺🇦🏦",
-                widget_link: {
-                    url: `https://t.me/${botUsername}/app`,
-                    name: "Грати зараз"
-                }
-            });
+            tg.openTelegramLink(telegramShareLink);
         } else {
-            navigator.clipboard.writeText(`https://t.me/${botUsername}/app`);
+            navigator.clipboard.writeText(shareUrl);
             showModal("Запросити друзів", "<p>Посилання на бота скопійовано! Надішліть його друзям, щоб вони приєдналися.</p>", [
                 { text: "Чудово", class: "btn-primary" }
             ]);
