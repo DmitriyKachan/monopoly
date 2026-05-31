@@ -336,18 +336,24 @@ function handleCellClick(index) {
             return;
         }
 
-        let allOwnedBySelf = false;
-        if (space.group) {
-            const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
-            allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
-        }
-
         showPropertyModal(
             space,
             () => {}, // buy handler (only triggered inside actual landing workflow)
             () => {}, 
             true, // isSelfOwner
-            allOwnedBySelf ? () => {
+            () => {
+                // Check if player owns all properties of the color group (monopoly)
+                let allOwnedBySelf = false;
+                if (space.group) {
+                    const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
+                    allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
+                }
+
+                if (!allOwnedBySelf) {
+                    alert("Ви не можете будувати філії, поки не зберете монополію (всі компанії одного кольору)!");
+                    return;
+                }
+
                 // Upgrade handler
                 if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
                     const success = game.upgradeProperty(mp.playerId, space.id);
@@ -367,9 +373,11 @@ function handleCellClick(index) {
                         renderPlayersHUD(game);
                         updateGameLog(game);
                         hideModal();
+                    } else {
+                        alert("Недостатньо грошей для будівництва філії!");
                     }
                 }
-            } : null
+            }
         );
     }
 }
