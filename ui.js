@@ -92,7 +92,7 @@ export function renderBoard(gameState, onCellClick) {
             branchesEl.className = 'cell-branches';
             for (let i = 0; i < space.branches; i++) {
                 const dot = document.createElement('div');
-                dot.className = 'cell-branch-dot';
+                dot.className = `cell-branch-dot p-color-${space.owner}`;
                 branchesEl.appendChild(dot);
             }
             cell.appendChild(branchesEl);
@@ -254,7 +254,7 @@ export function renderPlayersHUD(gameState) {
 
     gameState.players.forEach(player => {
         const card = document.createElement('div');
-        card.className = `player-hud-card ${gameState.currentPlayerIndex === player.id ? 'active' : ''} ${player.isBankrupt ? 'bankrupt' : ''}`;
+        card.className = `player-hud-card ${gameState.currentPlayerIndex === player.id ? 'active' : ''} ${player.isBankrupt ? 'bankrupt' : ''} p-border-${player.id}`;
         
         if (playerClickCallback && !player.isBankrupt) {
             card.style.cursor = 'pointer';
