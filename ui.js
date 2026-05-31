@@ -338,7 +338,7 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
     if (!isSelfOwner) {
         buttons.push({ text: `Придбати за ₴${space.price}`, class: 'btn-primary', onClick: onBuy });
         buttons.push({ text: 'Відхилити', class: 'btn-secondary', onClick: onDecline });
-    } else if (!isSpecial && space.branches < 4) {
+    } else if (!isSpecial && space.branches < 4 && onUpgrade) {
         buttons.push({ text: `Побудувати філію за ₴${space.branchCost}`, class: 'btn-primary', onClick: onUpgrade });
         buttons.push({ text: 'Закрити', class: 'btn-secondary' });
     } else {

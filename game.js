@@ -337,6 +337,11 @@ export class GameState {
         if (space.branches >= 4) return false; // 4 branches max (SuperBranch / Hotel equivalent)
         if (player.money < space.branchCost) return false;
 
+        // Check if player owns all properties of the color group (monopoly)
+        const sameGroupSpaces = this.spaces.filter(s => s.group === space.group);
+        const allOwnedBySame = sameGroupSpaces.every(s => s.owner === playerId);
+        if (!allOwnedBySame) return false;
+
         player.money -= space.branchCost;
         space.branches++;
         this.log(`${player.name} побудував філію на ${space.name} за ₴${space.branchCost}`, 'gain');

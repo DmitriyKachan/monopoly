@@ -336,12 +336,15 @@ function handleCellClick(index) {
             return;
         }
 
+        const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
+        const allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
+
         showPropertyModal(
             space,
             () => {}, // buy handler (only triggered inside actual landing workflow)
             () => {}, 
             true, // isSelfOwner
-            () => {
+            allOwnedBySelf ? () => {
                 // Upgrade handler
                 if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
                     const success = game.upgradeProperty(mp.playerId, space.id);
@@ -363,7 +366,7 @@ function handleCellClick(index) {
                         hideModal();
                     }
                 }
-            }
+            } : null
         );
     }
 }
