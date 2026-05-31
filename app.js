@@ -345,7 +345,7 @@ function getWsUrl() {
     if (urlParams.has('ws_server')) {
         return urlParams.get('ws_server');
     }
-    return "ws://localhost:8765";
+    return "wss://jiubehb-monopoly-backend.hf.space";
 }
 
 // Start Monopoly game state loop
