@@ -116,6 +116,15 @@ function setupMenuHandlers() {
         initLobbyScreen();
     });
 
+    // Play with Bot
+    document.getElementById('btn-play-bot').addEventListener('click', () => {
+        isMultiplayerGame = false;
+        startNewGame([
+            { name: userProfile.name, isBot: false, avatar: userProfile.avatar },
+            { name: "АТБ-Борис 🤖", isBot: true, avatar: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=80&auto=format&fit=crop" }
+        ]);
+    });
+
     // Create Room
     document.getElementById('btn-create-lobby').addEventListener('click', () => {
         document.getElementById('lobby-modes').style.display = 'none';
@@ -870,7 +879,7 @@ function handleUserEndTurn() {
     processNextTurn();
 }
 
-// Coordinates turns routing (User vs User only)
+// Coordinates turns routing (User vs Bot or User vs User)
 function processNextTurn() {
     const activePlayer = game.getCurrentPlayer();
     document.getElementById('current-player-name').innerText = activePlayer.name;
@@ -888,7 +897,210 @@ function processNextTurn() {
             updateGameLog(game);
         }
         return;
+    } else {
+        // Offline / Bot Mode
+        if (activePlayer.isBot) {
+            document.getElementById('btn-roll-dice').disabled = true;
+            document.getElementById('btn-end-turn').disabled = true;
+            game.log(`Хід робота ${activePlayer.name}...`);
+            updateGameLog(game);
+            setTimeout(runBotTurn, 1500);
+        } else {
+            document.getElementById('btn-roll-dice').disabled = false;
+            document.getElementById('btn-end-turn').disabled = true;
+            game.log(`Ваш хід (${activePlayer.name}). Кидайте кубики!`);
+            updateGameLog(game);
+        }
     }
+}
+
+// Bot AI Decision loop
+function runBotTurn() {
+    const bot = game.getCurrentPlayer();
+    if (!bot || !bot.isBot || bot.isBankrupt) return;
+
+    // Check if in Jail (Shelter)
+    if (bot.inJail) {
+        game.log(`${bot.name} намагається вийти з укриття...`);
+        updateGameLog(game);
+        
+        // If rich, pay to get out. Otherwise, try to roll double.
+        if (bot.money >= 3000) {
+            game.tryGetOutJail(bot.id, 'pay');
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            setTimeout(executeBotRoll, 1000);
+        } else {
+            const rollResult = game.tryGetOutJail(bot.id, 'roll');
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            
+            if (rollResult.success) {
+                animateDiceRoll(rollResult.d1, rollResult.d2, () => {
+                    updatePlayerTokens(game);
+                    resolveBotLanding(bot.id, bot.position, rollResult.sum);
+                });
+            } else {
+                animateDiceRoll(rollResult.d1, rollResult.d2, () => {
+                    setTimeout(executeBotEndTurn, 1500);
+                });
+            }
+        }
+        return;
+    }
+
+    executeBotRoll();
+}
+
+function executeBotRoll() {
+    const bot = game.getCurrentPlayer();
+    if (!bot || !bot.isBot || bot.isBankrupt) return;
+
+    const { d1, d2, sum } = game.rollDice();
+    game.log(`${bot.name} кинув кубики: ${d1}:${d2}`, 'system');
+    
+    const fromPos = bot.position;
+    game.movePlayer(bot.id, sum);
+
+    animateDiceRoll(d1, d2, () => {
+        animatePlayerMovement(game, bot.id, fromPos, sum, () => {
+            renderPlayersHUD(game);
+            resolveBotLanding(bot.id, bot.position, sum);
+        });
+    });
+}
+
+function resolveBotLanding(botId, spaceId, diceSum) {
+    const bot = game.players.find(p => p.id === botId);
+    const space = game.spaces[spaceId];
+    if (!bot || bot.isBankrupt) return;
+
+    if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
+        if (space.owner === null) {
+            // Buy if has enough money (price + 500 reserve)
+            if (bot.money >= space.price + 500) {
+                game.purchaseProperty(botId, spaceId);
+                renderBoard(game, handleCellClick);
+                renderPlayersHUD(game);
+                updateGameLog(game);
+            } else {
+                game.log(`${bot.name} вирішив не купувати ${space.name} через брак коштів.`);
+                updateGameLog(game);
+            }
+        } else if (space.owner !== botId) {
+            // Pay rent
+            const rent = game.payRent(botId, spaceId, diceSum);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            
+            if (bot.money < 0) {
+                resolveBotDebt(botId, rent);
+                return;
+            }
+        }
+    } else if (space.type === SPACE_TYPES.FREE_PARKING) {
+        game.claimFreeParking(botId);
+        renderPlayersHUD(game);
+        updateGameLog(game);
+    } else if (space.type === SPACE_TYPES.GO_TO_JAIL) {
+        game.sendToJail(botId);
+        updatePlayerTokens(game);
+        renderPlayersHUD(game);
+        updateGameLog(game);
+    } else if (space.type === SPACE_TYPES.CHANCE) {
+        const card = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
+        showChanceModal(`${bot.name} витягнув картку Шанс:\n\n${card.text}`, () => {
+            applyChanceCardAction(botId, card);
+            setTimeout(executeBotUpgradesAndEnd, 1000);
+        });
+        return;
+    }
+
+    setTimeout(executeBotUpgradesAndEnd, 1500);
+}
+
+function executeBotUpgradesAndEnd() {
+    const bot = game.getCurrentPlayer();
+    if (!bot || !bot.isBot || bot.isBankrupt) return;
+
+    // Upgrade properties if owns full set and has > 2000 cash
+    if (bot.money > 2000) {
+        const botProps = game.spaces.filter(s => s.owner === bot.id && s.type === SPACE_TYPES.PROPERTY && s.branches < 4);
+        for (let s of botProps) {
+            const sameGroup = game.spaces.filter(sp => sp.group === s.group);
+            const ownsAll = sameGroup.every(sp => sp.owner === bot.id);
+            if (ownsAll && bot.money >= s.branchCost + 1000) {
+                game.upgradeProperty(bot.id, s.id);
+                renderBoard(game, handleCellClick);
+                renderPlayersHUD(game);
+                updateGameLog(game);
+                break;
+            }
+        }
+    }
+
+    executeBotEndTurn();
+}
+
+function executeBotEndTurn() {
+    if (game.isGameOver) {
+        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        return;
+    }
+
+    game.nextTurn();
+    renderPlayersHUD(game);
+    updateGameLog(game);
+
+    if (game.isGameOver) {
+        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        return;
+    }
+
+    processNextTurn();
+}
+
+function resolveBotDebt(botId, rentAmount) {
+    const bot = game.players.find(p => p.id === botId);
+    if (!bot || bot.money >= 0) return;
+
+    // 1. Sell branches
+    const branches = game.spaces.filter(s => s.owner === botId && s.branches > 0);
+    for (let s of branches) {
+        while (s.branches > 0 && bot.money < 0) {
+            game.sellBranch(s.id);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+        }
+    }
+
+    // 2. Sell properties
+    if (bot.money < 0) {
+        const props = game.spaces.filter(s => s.owner === botId && (!s.branches || s.branches === 0));
+        for (let s of props) {
+            if (bot.money >= 0) break;
+            game.sellProperty(s.id);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+        }
+    }
+
+    // 3. Declare bankruptcy if still negative
+    if (bot.money < 0) {
+        const currentSpace = game.spaces[bot.position];
+        let beneficiaryId = null;
+        if (currentSpace.owner !== null && currentSpace.owner !== botId) {
+            beneficiaryId = currentSpace.owner;
+        }
+        game.declareBankruptcy(botId, beneficiaryId);
+        renderBoard(game, handleCellClick);
+        renderPlayersHUD(game);
+        updateGameLog(game);
+    }
+
+    setTimeout(executeBotEndTurn, 1500);
 }
 
 // Handler for remote events sent over WebSockets
