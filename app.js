@@ -484,12 +484,18 @@ function setupMenuHandlers() {
                         }
                         btnWatchAd.disabled = false;
 
+                        const remaining = getAdRewardRemainingTime();
+                        if (remaining > 0) {
+                            const remainingMin = Math.ceil(remaining / 60000);
+                            showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 15 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
+                                { text: "Дякую! 🥰", class: "btn-primary" }
+                            ]);
                         } else {
                             userProfile.startingBonus = 1500; // +1.5M ₴
                             localStorage.setItem('last_ad_reward_time', Date.now().toString());
                             triggerConfetti(); // Confetti on ad reward!
-                            showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 15 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>", [
-                                { text: "Дякую! 🥰", class: "btn-primary" }
+                            showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
+                                { text: "Чудово! 🚀", class: "btn-primary" }
                             ]);
                         }
                         updateAdButtonText();
