@@ -289,7 +289,7 @@ function createRoomWorkflow(autoShare = false) {
         if (autoShare && mp.roomCode && !shareLinkOpened) {
             shareLinkOpened = true;
             const botUsername = "queuecomfybot";
-            const shareUrl = `https://t.me/${botUsername}/app?startapp=${mp.roomCode}`;
+            const shareUrl = `https://t.me/${botUsername}?startapp=${mp.roomCode}`;
             const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
             const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
