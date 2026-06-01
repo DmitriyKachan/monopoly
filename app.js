@@ -389,7 +389,25 @@ function setupMenuHandlers() {
                 const originalText = btnTextSpan ? btnTextSpan.innerText : "Бонус за рекламу 📺 (+1.5M ₴)";
                 if (btnTextSpan) btnTextSpan.innerText = "Завантаження реклами...";
 
+                let adResolved = false;
+
+                // 12 seconds safety timeout to release the button if AdsGram hangs
+                const safetyTimeout = setTimeout(() => {
+                    if (!adResolved) {
+                        adResolved = true;
+                        btnWatchAd.disabled = false;
+                        if (btnTextSpan) btnTextSpan.innerText = originalText;
+                        updateAdButtonText();
+                        showModal("Час очікування минув ⚠️", "<p>Реклама завантажується занадто довго. Будь ласка, перевірте з'єднання з інтернетом або спробуйте пізніше.</p>", [
+                            { text: "Зрозуміло", class: "btn-secondary" }
+                        ]);
+                    }
+                }, 12000);
+
                 AdController.show().then((result) => {
+                    if (adResolved) return;
+                    adResolved = true;
+                    clearTimeout(safetyTimeout);
                     btnWatchAd.disabled = false;
 
                     const remaining = getAdRewardRemainingTime();
@@ -407,6 +425,9 @@ function setupMenuHandlers() {
                     }
                     updateAdButtonText();
                 }).catch((result) => {
+                    if (adResolved) return;
+                    adResolved = true;
+                    clearTimeout(safetyTimeout);
                     btnWatchAd.disabled = false;
                     if (btnTextSpan) btnTextSpan.innerText = originalText;
                     updateAdButtonText();
