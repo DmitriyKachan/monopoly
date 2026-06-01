@@ -9,6 +9,12 @@ import websockets
 
 import os
 
+# Import psycopg2 for database compatibility
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
 # Store active game rooms
 # Format: { room_code: { "clients": set(), "players": [ { "id": idx, "name": name, "avatar": avatar, "socket": ws } ] } }
 ROOMS = {}
@@ -16,8 +22,81 @@ ROOMS = {}
 LEADERBOARD_FILE = "leaderboard.json"
 LEADERBOARD = {}
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not psycopg2:
+    DATABASE_URL = None
+
+DB_CONN = None
+
+def get_db_connection():
+    global DB_CONN
+    if not DATABASE_URL:
+        return None
+    try:
+        if DB_CONN is None or DB_CONN.closed != 0:
+            print("Підключення до бази даних PostgreSQL...")
+            DB_CONN = psycopg2.connect(DATABASE_URL)
+            DB_CONN.autocommit = True
+        return DB_CONN
+    except Exception as e:
+        print(f"Помилка підключення до PostgreSQL: {e}")
+        DB_CONN = None
+        return None
+
+def init_db():
+    conn = get_db_connection()
+    if conn:
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS leaderboard (
+                        name TEXT PRIMARY KEY,
+                        avatar TEXT,
+                        wins INTEGER,
+                        games INTEGER,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_leaderboard_sorting ON leaderboard (wins DESC, games DESC);
+                """)
+                print("Базу даних PostgreSQL успішно ініціалізовано.")
+        except Exception as e:
+            print(f"Помилка ініціалізації бази даних: {e}")
+
+def query_db(query, params=None, fetch=False):
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+            if fetch:
+                return cursor.fetchall()
+            return True
+    except psycopg2.OperationalError as e:
+        print(f"Operational error in DB connection, attempting reconnect: {e}")
+        global DB_CONN
+        DB_CONN = None
+        conn = get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, params)
+                    if fetch:
+                        return cursor.fetchall()
+                    return True
+            except Exception as ex:
+                print(f"Reconnect retry failed: {ex}")
+        return None
+    except Exception as e:
+        print(f"Помилка запиту до БД: {e}")
+        return None
+
 def load_leaderboard():
     global LEADERBOARD
+    if DATABASE_URL:
+        return
     if os.path.exists(LEADERBOARD_FILE):
         try:
             with open(LEADERBOARD_FILE, "r", encoding="utf-8") as f:
@@ -30,13 +109,18 @@ def load_leaderboard():
         LEADERBOARD = {}
 
 def save_leaderboard():
+    if DATABASE_URL:
+        return
     try:
         with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
             json.dump(LEADERBOARD, f, indent=4, ensure_ascii=False)
     except Exception as e:
         print(f"Помилка збереження лідерборду: {e}")
 
-load_leaderboard()
+if DATABASE_URL:
+    init_db()
+else:
+    load_leaderboard()
 
 async def broadcast_to_room(room_code, message, exclude_ws=None):
     if room_code not in ROOMS:
@@ -163,39 +247,69 @@ async def handle_connection(websocket):
                 if avatar.startswith("data:image"):
                     avatar = "assets/cossack_tycoon.png"
                 
-                LEADERBOARD[name] = {
-                    "name": name,
-                    "avatar": avatar,
-                    "wins": wins,
-                    "games": games
-                }
-                save_leaderboard()
-                
-                # Sort players: first by wins (descending), then by games played (descending)
-                sorted_board = sorted(
-                    LEADERBOARD.values(),
-                    key=lambda x: (x.get("wins", 0), x.get("games", 0)),
-                    reverse=True
-                )
-                
-                # Find rank of current player
-                your_rank = -1
-                for idx, player in enumerate(sorted_board):
-                    if player["name"] == name:
-                        your_rank = idx + 1
-                        break
-                
-                # Retrieve Top 50
-                top50 = sorted_board[:50]
-                
-                await websocket.send(json.dumps({
-                    "type": "leaderboard",
-                    "top50": [{
+                if DATABASE_URL:
+                    # DB mode: insert/update stats
+                    query_db("""
+                        INSERT INTO leaderboard (name, avatar, wins, games, updated_at) 
+                        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (name) DO UPDATE 
+                        SET avatar = EXCLUDED.avatar, wins = EXCLUDED.wins, games = EXCLUDED.games, updated_at = CURRENT_TIMESTAMP
+                    """, (name, avatar, wins, games))
+                    
+                    # Get Top 50
+                    rows = query_db("SELECT name, avatar, wins, games FROM leaderboard ORDER BY wins DESC, games DESC LIMIT 50", fetch=True)
+                    top50 = []
+                    if rows:
+                        for row in rows:
+                            top50.append({
+                                "name": row[0],
+                                "avatar": row[1],
+                                "wins": row[2],
+                                "games": row[3]
+                            })
+                            
+                    # Get Rank of current player: Count how many players have more wins, or same wins but more games
+                    rank_rows = query_db("""
+                        SELECT COUNT(*) FROM leaderboard 
+                        WHERE wins > %s OR (wins = %s AND games > %s)
+                    """, (wins, wins, games), fetch=True)
+                    
+                    your_rank = 1
+                    if rank_rows and rank_rows[0][0] is not None:
+                        your_rank = rank_rows[0][0] + 1
+                else:
+                    # JSON mode: insert/update stats
+                    LEADERBOARD[name] = {
+                        "name": name,
+                        "avatar": avatar,
+                        "wins": wins,
+                        "games": games
+                    }
+                    save_leaderboard()
+                    
+                    # Sort players
+                    sorted_board = sorted(
+                        LEADERBOARD.values(),
+                        key=lambda x: (x.get("wins", 0), x.get("games", 0)),
+                        reverse=True
+                    )
+                    
+                    your_rank = -1
+                    for idx, player in enumerate(sorted_board):
+                        if player["name"] == name:
+                            your_rank = idx + 1
+                            break
+                    
+                    top50 = [{
                         "name": p["name"],
                         "avatar": p["avatar"],
                         "wins": p["wins"],
                         "games": p["games"]
-                    } for p in top50],
+                    } for p in sorted_board[:50]]
+                
+                await websocket.send(json.dumps({
+                    "type": "leaderboard",
+                    "top50": top50,
                     "your_rank": your_rank
                 }))
                     
