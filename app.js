@@ -129,6 +129,13 @@ if (savedProfile) {
     } catch (e) {
         console.error("Error parsing saved profile", e);
     }
+} else if (tg && tg.initDataUnsafe?.user) {
+    const u = tg.initDataUnsafe.user;
+    userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
+    userProfile.username = u.username || 'player';
+    if (u.photo_url) {
+        userProfile.avatar = u.photo_url;
+    }
 }
 
 function getSyncedAvatar() {
@@ -149,13 +156,6 @@ function updateUserAvatarFrames() {
         if (userProfile.frame) {
             cabinetContainer.classList.add(`frame-${userProfile.frame}`);
         }
-    }
-} else if (tg && tg.initDataUnsafe?.user) {
-    const u = tg.initDataUnsafe.user;
-    userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
-    userProfile.username = u.username || 'player';
-    if (u.photo_url) {
-        userProfile.avatar = u.photo_url;
     }
 }
 
