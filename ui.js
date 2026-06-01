@@ -222,10 +222,25 @@ export function animateDiceRoll(d1, d2, callback) {
             
             sumEl.innerText = d1 + d2;
             
-            // Add neon pulse glow to double
+            // Screen shake and neon flash effects upon dice landing
+            const boardWrapper = document.querySelector('.monopoly-board-wrapper');
+            if (boardWrapper) {
+                boardWrapper.classList.add('screen-shake');
+                setTimeout(() => boardWrapper.classList.remove('screen-shake'), 400);
+            }
+            const board = document.getElementById('board');
+            if (board) {
+                const flash = document.createElement('div');
+                flash.className = 'dice-flash-effect active';
+                board.appendChild(flash);
+                setTimeout(() => flash.remove(), 600);
+            }
+
+            // Add neon pulse glow and trigger confetti to double
             if (d1 === d2) {
                 sumEl.style.boxShadow = '0 0 15px var(--color-yellow)';
                 setTimeout(() => sumEl.style.boxShadow = 'none', 1000);
+                triggerConfetti();
             }
             
             callback();
@@ -261,9 +276,32 @@ export function renderPlayersHUD(gameState) {
             card.addEventListener('click', () => playerClickCallback(player.id));
         }
 
-        const dot = document.createElement('div');
-        dot.className = `hud-player-dot p-color-${player.id}`;
-        card.appendChild(dot);
+        // Render player avatar with animated border frames
+        const avatarWrapper = document.createElement('div');
+        avatarWrapper.className = 'hud-avatar-wrapper';
+        
+        const avatarContainer = document.createElement('div');
+        avatarContainer.className = 'avatar-container';
+        if (player.frame) {
+            avatarContainer.classList.add(`frame-${player.frame}`);
+            avatarContainer.style.width = '32px';
+            avatarContainer.style.height = '32px';
+        } else {
+            avatarContainer.style.width = '28px';
+            avatarContainer.style.height = '28px';
+            avatarContainer.style.border = `2px solid rgba(255, 255, 255, 0.15)`;
+        }
+
+        const avatarImg = document.createElement('img');
+        avatarImg.className = 'hud-avatar';
+        avatarImg.src = player.avatar || 'assets/cossack_tycoon.png';
+        avatarImg.style.width = '100%';
+        avatarImg.style.height = '100%';
+        avatarImg.onerror = () => { avatarImg.src = 'assets/cossack_tycoon.png'; };
+        
+        avatarContainer.appendChild(avatarImg);
+        avatarWrapper.appendChild(avatarContainer);
+        card.appendChild(avatarWrapper);
 
         const name = document.createElement('span');
         name.className = 'hud-player-name';
@@ -391,6 +429,84 @@ export function showGameOverModal(rankings, onExit) {
     `;
 
     showModal("Гру Завершено!", rowsHtml, [{ text: "Головне Меню", class: "btn-primary", onClick: onExit }]);
+    triggerConfetti(); // Confetti on game win!
+}
+
+// ==========================================================================
+// CONFETTI CELEBRATION ENGINE
+// ==========================================================================
+export function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    const colors = ['#ffe259', '#ffa751', '#00f2fe', '#4facfe', '#ff007f', '#7f00ff', '#10b981'];
+    const particles = [];
+    
+    // Shoot from left and right corners
+    function createParticle(side) {
+        return {
+            x: side === 'left' ? 0 : canvas.width,
+            y: canvas.height,
+            vx: side === 'left' ? (Math.random() * 12 + 8) : -(Math.random() * 12 + 8),
+            vy: -(Math.random() * 15 + 18),
+            r: Math.random() * 6 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.random() * 10 - 5,
+            tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+            tiltAngle: 0,
+            gravity: 0.5
+        };
+    }
+    
+    for (let i = 0; i < 75; i++) {
+        particles.push(createParticle('left'));
+        particles.push(createParticle('right'));
+    }
+    
+    let animationFrameId;
+    const duration = 3500; // 3.5 seconds
+    const startTime = Date.now();
+    
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const remaining = startTime + duration - Date.now();
+        if (remaining <= 0 && particles.length === 0) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            cancelAnimationFrame(animationFrameId);
+            return;
+        }
+        
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.tiltAngle += p.tiltAngleIncremental;
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.tilt = Math.sin(p.tiltAngle) * 15;
+            
+            // Draw
+            ctx.beginPath();
+            ctx.lineWidth = p.r;
+            ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+            ctx.stroke();
+            
+            // Remove particles that go off-screen
+            if (p.y > canvas.height + 20 || p.x < -20 || p.x > canvas.width + 20) {
+                particles.splice(i, 1);
+            }
+        }
+        
+        animationFrameId = requestAnimationFrame(draw);
+    }
+    
+    draw();
 }
 
 

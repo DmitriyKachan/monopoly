@@ -3,7 +3,7 @@
 // ==========================================================================
 
 import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
-import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback } from './ui.js';
+import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback, triggerConfetti } from './ui.js';
 import { MultiplayerManager } from './multiplayer.js';
 
 // Game state instance
@@ -27,7 +27,7 @@ mp.onPlayerLeftCallback = (name) => {
     }
 };
 
-let userProfile = { name: "Гість", username: "guest", avatar: "assets/cossack_tycoon.png", stats: { games: 0, wins: 0 } };
+let userProfile = { name: "Гість", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 } };
 
 // Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
 const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
@@ -124,9 +124,31 @@ if (savedProfile) {
         userProfile.name = parsed.name || userProfile.name;
         userProfile.username = parsed.username || userProfile.username;
         userProfile.avatar = parsed.avatar || userProfile.avatar;
+        userProfile.frame = parsed.frame || null;
         userProfile.stats = parsed.stats || { games: 0, wins: 0 };
     } catch (e) {
         console.error("Error parsing saved profile", e);
+    }
+}
+
+function getSyncedAvatar() {
+    return userProfile.avatar + (userProfile.frame ? '|' + userProfile.frame : '');
+}
+
+function updateUserAvatarFrames() {
+    const menuContainer = document.getElementById('user-avatar-container');
+    if (menuContainer) {
+        menuContainer.className = 'avatar-container';
+        if (userProfile.frame) {
+            menuContainer.classList.add(`frame-${userProfile.frame}`);
+        }
+    }
+    const cabinetContainer = document.getElementById('profile-avatar-container');
+    if (cabinetContainer) {
+        cabinetContainer.className = 'avatar-container';
+        if (userProfile.frame) {
+            cabinetContainer.classList.add(`frame-${userProfile.frame}`);
+        }
     }
 } else if (tg && tg.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
@@ -148,6 +170,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Populate User Profile
     document.getElementById('user-name').innerText = userProfile.name;
     document.getElementById('user-avatar').src = userProfile.avatar;
+    updateUserAvatarFrames();
+
+    // Setup Frames Shop button
+    const shopBtn = document.getElementById('btn-open-shop');
+    if (shopBtn) {
+        shopBtn.onclick = showFrameShopModal;
+    }
 
     // Set callback for player HUD trading clicks
     setPlayerClickCallback(handlePlayerClick);
@@ -206,8 +235,8 @@ function autoJoinRoomByCode(code) {
     
     document.getElementById('matchmaking-status').innerText = `Підключення до кімнати ${code}...`;
 
-    mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
-        mp.joinRoom(code, userProfile.name, userProfile.avatar);
+    mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
+        mp.joinRoom(code, userProfile.name, getSyncedAvatar());
     });
 
     mp.onPlayerUpdateCallback = (players) => {
@@ -239,9 +268,9 @@ function createRoomWorkflow(autoShare = false) {
     
     document.getElementById('matchmaking-status').innerText = "Підключення до WSS сервера...";
     
-    mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
+    mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
         document.getElementById('matchmaking-status').innerText = "Створення кімнати...";
-        mp.createRoom(userProfile.name, userProfile.avatar);
+        mp.createRoom(userProfile.name, getSyncedAvatar());
     });
 
     let shareLinkOpened = false;
@@ -325,7 +354,7 @@ function setupMenuHandlers() {
     document.getElementById('btn-play-bot').addEventListener('click', () => {
         isMultiplayerGame = false;
         startNewGame([
-            { name: userProfile.name, isBot: false, avatar: userProfile.avatar },
+            { name: userProfile.name, isBot: false, avatar: getSyncedAvatar() },
             { name: "АТБ-Борис 🤖", isBot: true, avatar: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=80&auto=format&fit=crop" }
         ]);
     });
@@ -362,8 +391,8 @@ function setupMenuHandlers() {
         
         document.getElementById('matchmaking-status').innerText = `Підключення до кімнати ${code}...`;
 
-        mp.connect(getWsUrl(), userProfile.name, userProfile.avatar, () => {
-            mp.joinRoom(code, userProfile.name, userProfile.avatar);
+        mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
+            mp.joinRoom(code, userProfile.name, getSyncedAvatar());
         });
 
         mp.onPlayerUpdateCallback = (players) => {
@@ -455,17 +484,12 @@ function setupMenuHandlers() {
                         }
                         btnWatchAd.disabled = false;
 
-                        const remaining = getAdRewardRemainingTime();
-                        if (remaining > 0) {
-                            const remainingMin = Math.ceil(remaining / 60000);
-                            showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 15 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
-                                { text: "Дякую! 🥰", class: "btn-primary" }
-                            ]);
                         } else {
                             userProfile.startingBonus = 1500; // +1.5M ₴
                             localStorage.setItem('last_ad_reward_time', Date.now().toString());
-                            showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
-                                { text: "Чудово! 🚀", class: "btn-primary" }
+                            triggerConfetti(); // Confetti on ad reward!
+                            showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 15 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>", [
+                                { text: "Дякую! 🥰", class: "btn-primary" }
                             ]);
                         }
                         updateAdButtonText();
@@ -552,11 +576,17 @@ function renderLobbyPlayers(players) {
     listEl.innerHTML = '';
 
     players.forEach(p => {
+        const parts = (p.avatar || '').split('|');
+        const avatarUrl = parts[0] || 'assets/cossack_tycoon.png';
+        const frame = parts[1] || null;
+
         const card = document.createElement('div');
         card.className = 'lobby-player-card';
         card.innerHTML = `
-            <div class="player-card-info">
-                <img src="${p.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop'}" class="lobby-avatar connected">
+            <div class="player-card-info" style="display: flex; align-items: center; gap: 0.5rem;">
+                <div class="avatar-container ${frame ? 'frame-' + frame : ''}" style="width: 36px; height: 36px;">
+                    <img src="${avatarUrl}" class="lobby-avatar connected" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                </div>
                 <span class="lobby-name">${p.name} ${p.name === userProfile.name ? '(Ви)' : ''}</span>
             </div>
             <span class="lobby-status-text ready">${p.is_host ? 'Хост' : 'Гравець'}</span>
@@ -578,7 +608,13 @@ function startNewGame(playerList) {
     game.reset();
     
     playerList.forEach((p, idx) => {
-        const addedPlayer = game.addPlayer(p.name, `p-color-${idx}`, p.avatar, p.isBot || false);
+        const parts = (p.avatar || '').split('|');
+        const avatarUrl = parts[0] || 'assets/cossack_tycoon.png';
+        const frame = parts[1] || null;
+
+        const addedPlayer = game.addPlayer(p.name, `p-color-${idx}`, avatarUrl, p.isBot || false);
+        addedPlayer.frame = frame; // Expose frame inside the game state!
+
         // Добавляем бонус за просмотр рекламы, если он есть
         if (!p.isBot && p.name === userProfile.name && userProfile.startingBonus) {
             addedPlayer.money += userProfile.startingBonus;
@@ -1723,7 +1759,7 @@ function fetchGlobalLeaderboard() {
         ws.send(JSON.stringify({
             type: "sync_stats",
             name: userProfile.name,
-            avatar: userProfile.avatar,
+            avatar: getSyncedAvatar(),
             wins: userProfile.stats?.wins || 0,
             games: userProfile.stats?.games || 0
         }));
@@ -1775,12 +1811,18 @@ function renderLeaderboardList(top50, yourRank) {
         else if (rank === 2) rankClass = 'rank-2';
         else if (rank === 3) rankClass = 'rank-3';
         
+        const parts = (player.avatar || '').split('|');
+        const avatarUrl = parts[0] || 'assets/cossack_tycoon.png';
+        const frame = parts[1] || null;
+        
         const row = document.createElement('div');
         row.className = `leaderboard-row ${isMe ? 'my-row' : ''}`;
         row.innerHTML = `
-            <div class="leaderboard-player-info">
+            <div class="leaderboard-player-info" style="display: flex; align-items: center; gap: 0.5rem;">
                 <span class="leaderboard-rank ${rankClass}">${rank}</span>
-                <img src="${player.avatar || 'assets/cossack_tycoon.png'}" class="leaderboard-avatar" onerror="this.src='assets/cossack_tycoon.png'">
+                <div class="avatar-container ${frame ? 'frame-' + frame : ''}" style="width: 32px; height: 32px;">
+                    <img src="${avatarUrl}" class="leaderboard-avatar" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+                </div>
                 <span class="leaderboard-name">${player.name}</span>
             </div>
             <div class="leaderboard-stats">
@@ -1821,6 +1863,7 @@ function setupMenuTabs() {
 function syncProfileTab() {
     const avatarLg = document.getElementById('profile-avatar-lg');
     if (avatarLg) avatarLg.src = userProfile.avatar;
+    updateUserAvatarFrames();
     
     const nameLg = document.getElementById('profile-name-lg');
     if (nameLg) nameLg.innerText = userProfile.name;
@@ -1943,6 +1986,7 @@ function setupProfileCustomization() {
                     if (userNameEl) userNameEl.innerText = userProfile.name;
                     const userAvatarEl = document.getElementById('user-avatar');
                     if (userAvatarEl) userAvatarEl.src = userProfile.avatar;
+                    updateUserAvatarFrames();
                     
                     // Update cabinet UI and sync with server
                     syncProfileTab();
@@ -2010,5 +2054,154 @@ function setupProfileCustomization() {
             });
         }
     });
+}
+
+// ==========================================================================
+// AVATAR FRAME SHOP CONTROLLER
+// ==========================================================================
+const FRAME_ITEMS = [
+    { id: "neon", name: "Неонова Аура 💎", desc: "Світиться яскравим блакитним неон-світлом", price: 50, starsPrice: 50, class: "frame-neon" },
+    { id: "gold", name: "Кібер Золото 👑", desc: "Рамка з анімованим золотим градієнтом", price: 100, starsPrice: 100, class: "frame-gold" },
+    { id: "rainbow", name: "Веселковий Рейв 🌈", desc: "Анімований перелив кольорів веселки", price: 150, starsPrice: 150, class: "frame-rainbow" }
+];
+
+function showFrameShopModal() {
+    let purchased = [];
+    try {
+        const saved = localStorage.getItem('purchased_frames');
+        if (saved) purchased = JSON.parse(saved);
+    } catch (e) {}
+    
+    let activeFrame = userProfile.frame;
+
+    let listHtml = `<div class="shop-modal-container">
+        <p style="font-size: 0.82rem; color: var(--text-secondary); text-align: center; margin-bottom: 0.75rem; line-height: 1.4;">
+            Придбайте унікальні анімовані рамки для вашого аватара. Вони відображаються у вашому кабінеті, лобі та безпосередньо в ігровому HUD на ігровій дошці!
+        </p>
+        <div class="shop-card-list">
+    `;
+
+    FRAME_ITEMS.forEach(item => {
+        const isPurchased = purchased.includes(item.id);
+        const isActive = activeFrame === item.id;
+        
+        let actionBtnHtml = '';
+        if (isActive) {
+            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none;">Екіпіровано</button>`;
+        } else if (isPurchased) {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
+        } else {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff;" onclick="window.purchaseFrame('${item.id}')">Купити ₴${item.price}</button>`;
+        }
+
+        listHtml += `
+            <div class="shop-card-item ${isActive ? 'active-frame' : ''}">
+                <div class="shop-card-left">
+                    <div class="avatar-container ${item.class}" style="width: 46px; height: 46px; flex-shrink: 0;">
+                        <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+                    </div>
+                    <div class="shop-frame-info">
+                        <span class="shop-frame-name">${item.name}</span>
+                        <span class="shop-frame-desc">${item.desc}</span>
+                    </div>
+                </div>
+                <div>
+                    ${actionBtnHtml}
+                </div>
+            </div>
+        `;
+    });
+
+    listHtml += `
+        </div>
+        ${activeFrame ? `<button class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem; padding: 0.5rem;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : ''}
+    </div>`;
+
+    showModal("Крамниця анімованих рамок 👑", listHtml, [{ text: "Закрити", class: "btn-secondary" }]);
+}
+
+window.equipFrame = (frameId) => {
+    userProfile.frame = frameId;
+    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+    updateUserAvatarFrames();
+    showFrameShopModal(); // Redraw shop modal
+    syncProfileTab(); // Refresh profile tab
+};
+
+window.purchaseFrame = (frameId) => {
+    const frame = FRAME_ITEMS.find(f => f.id === frameId);
+    if (!frame) return;
+
+    // Show simulated purchase options screen
+    showModal("Купівля оформлення 🛒", `
+        <div style="display: flex; flex-direction: column; gap: 1rem; color: var(--text-primary); text-align: center;">
+            <p>Купується рамка <strong>${frame.name}</strong> за <strong>₴${frame.price}</strong> (або ⭐️ ${frame.starsPrice} Stars).</p>
+            <div class="avatar-container ${frame.class}" style="width: 80px; height: 80px; margin: 0 auto;">
+                <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
+                Це симуляція купівлі. Оберіть зручний для вас тестовий спосіб оплати. Реальні кошти списані не будуть!
+            </p>
+        </div>
+    `, [
+        {
+            text: "Тестовий платіж Stars ⭐️",
+            class: "btn-primary",
+            onClick: () => {
+                if (tg) {
+                    tg.showPopup({
+                        title: "Оплата Telegram Stars",
+                        message: `Підтверджуєте покупку ${frame.name} за ⭐️ ${frame.starsPrice} Stars?`,
+                        buttons: [
+                            { id: "yes", type: "default", text: "Оплатити" },
+                            { id: "no", type: "cancel", text: "Скасувати" }
+                        ]
+                    }, (buttonId) => {
+                        if (buttonId === "yes") {
+                            unlockFrame(frameId);
+                        } else {
+                            showFrameShopModal();
+                        }
+                    });
+                } else {
+                    unlockFrame(frameId);
+                }
+            }
+        },
+        {
+            text: "Тестовий платіж Mono ₴",
+            class: "btn-secondary",
+            onClick: () => {
+                unlockFrame(frameId);
+            }
+        },
+        { text: "Скасувати", class: "btn-secondary", onClick: showFrameShopModal }
+    ]);
+};
+
+function unlockFrame(frameId) {
+    let purchased = [];
+    try {
+        const saved = localStorage.getItem('purchased_frames');
+        if (saved) purchased = JSON.parse(saved);
+    } catch (e) {}
+    
+    if (!purchased.includes(frameId)) {
+        purchased.push(frameId);
+        localStorage.setItem('purchased_frames', JSON.stringify(purchased));
+    }
+    
+    // Auto equip
+    userProfile.frame = frameId;
+    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+    
+    updateUserAvatarFrames();
+    triggerConfetti(); // Confetti on successful purchase!
+    
+    showModal("Успішна покупка! 🎉", `
+        <p>Ви придбали та одягли рамку. Інші гравці тепер бачитимуть її на вашому профілі!</p>
+    `, [{ text: "Клас!", class: "btn-primary", onClick: showFrameShopModal }]);
+    
+    syncProfileTab();
 }
 
