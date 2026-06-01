@@ -423,6 +423,30 @@ function setupMenuHandlers() {
         createRoomWorkflow(true);
     });
 
+    // Invite friends from active lobby
+    const btnLobbyInvite = document.getElementById('btn-lobby-invite');
+    if (btnLobbyInvite) {
+        btnLobbyInvite.addEventListener('click', () => {
+            if (mp.roomCode) {
+                const botUsername = "queuecomfybot";
+                const shareUrl = `https://t.me/${botUsername}?startapp=${mp.roomCode}`;
+                const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
+                const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+
+                if (tg) {
+                    tg.openTelegramLink(telegramShareLink);
+                } else {
+                    navigator.clipboard.writeText(shareUrl);
+                    showModal("Запросити друзів", `<p>Код кімнати: <strong>${mp.roomCode}</strong>. Посилання скопійовано! Надішліть його другу.</p>`, [
+                        { text: "Чудово", class: "btn-primary" }
+                    ]);
+                }
+            } else {
+                alert("Помилка: кімнату ще не створено!");
+            }
+        });
+    }
+
     // Donate Monobank Button Handler
     const btnDonate = document.getElementById('btn-donate-mono');
     if (btnDonate) {
