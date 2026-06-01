@@ -36,15 +36,51 @@ const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
 const tg = window.Telegram?.WebApp;
 
 // AdsGram Configuration (Rewarded Video Ads)
-// По умолчанию используется тестовый ID "int-8673". Замените его на ваш после регистрации на adsgram.ai
 const ADSGRAM_BLOCK_ID = "33680"; 
 let AdController = null;
 
-if (window.Adsgram) {
-    AdController = window.Adsgram.init({
-        blockId: ADSGRAM_BLOCK_ID
-    });
+// Determine if we should run AdsGram in debug (testing) mode.
+// We enable debug mode if:
+// 1. Host is localhost/127.0.0.1 (local testing)
+// 2. URL query contains "debug_ad=true" or "debug=true"
+// 3. Platform is desktop/web or we are outside native Telegram mobile (to prevent no-fill errors on PC)
+const urlParams = new URLSearchParams(window.location.search);
+const isDebugAd = urlParams.has('debug_ad') || 
+                  urlParams.get('debug') === 'true' || 
+                  window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' || 
+                  (tg && (tg.platform === 'desktop' || tg.platform === 'web')) ||
+                  !tg;
+
+function initializeAdsGram() {
+    if (window.Adsgram && !AdController) {
+        AdController = window.Adsgram.init({
+            blockId: ADSGRAM_BLOCK_ID,
+            debug: isDebugAd,
+            debugConsole: isDebugAd
+        });
+
+        // Register event listeners to override the default AdsGram built-in error/no-fill modals.
+        // Doing this will prevent the duplicate double-modal issue.
+        AdController.addEventListener("onBannerNotFound", (res) => {
+            console.warn("AdsGram Event (onBannerNotFound): No ads available", res);
+        });
+        AdController.addEventListener("onError", (res) => {
+            console.error("AdsGram Event (onError):", res);
+        });
+        AdController.addEventListener("onNonStopShow", (res) => {
+            console.warn("AdsGram Event (onNonStopShow):", res);
+        });
+        AdController.addEventListener("onTooLongSession", (res) => {
+            console.warn("AdsGram Event (onTooLongSession):", res);
+        });
+        
+        console.log(`AdsGram initialized: blockId=${ADSGRAM_BLOCK_ID}, debug=${isDebugAd}`);
+    }
 }
+
+// Initial attempt to load if script is loaded early
+initializeAdsGram();
 
 // Cooldown settings (30 minutes in milliseconds)
 const AD_COOLDOWN_MS = 30 * 60 * 1000;
@@ -377,11 +413,7 @@ function setupMenuHandlers() {
         setInterval(updateAdButtonText, 30000); // every 30 seconds
 
         btnWatchAd.addEventListener('click', () => {
-            if (!AdController && window.Adsgram) {
-                AdController = window.Adsgram.init({
-                    blockId: ADSGRAM_BLOCK_ID
-                });
-            }
+            initializeAdsGram();
 
             if (AdController) {
                 btnWatchAd.disabled = true;
@@ -404,49 +436,63 @@ function setupMenuHandlers() {
                     }
                 }, 12000);
 
-                AdController.show().then((result) => {
-                    if (adResolved) return;
-                    adResolved = true;
-                    clearTimeout(safetyTimeout);
-                    btnWatchAd.disabled = false;
+                try {
+                    AdController.show().then((result) => {
+                        if (adResolved) return;
+                        adResolved = true;
+                        clearTimeout(safetyTimeout);
+                        btnWatchAd.disabled = false;
 
-                    const remaining = getAdRewardRemainingTime();
-                    if (remaining > 0) {
-                        const remainingMin = Math.ceil(remaining / 60000);
-                        showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 30 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
-                            { text: "Дякую! 🥰", class: "btn-primary" }
+                        const remaining = getAdRewardRemainingTime();
+                        if (remaining > 0) {
+                            const remainingMin = Math.ceil(remaining / 60000);
+                            showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 30 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
+                                { text: "Дякую! 🥰", class: "btn-primary" }
+                            ]);
+                        } else {
+                            userProfile.startingBonus = 1500; // +1.5M ₴
+                            localStorage.setItem('last_ad_reward_time', Date.now().toString());
+                            showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
+                                { text: "Чудово! 🚀", class: "btn-primary" }
+                            ]);
+                        }
+                        updateAdButtonText();
+                    }).catch((result) => {
+                        if (adResolved) return;
+                        adResolved = true;
+                        clearTimeout(safetyTimeout);
+                        btnWatchAd.disabled = false;
+                        if (btnTextSpan) btnTextSpan.innerText = originalText;
+                        updateAdButtonText();
+
+                        console.warn("AdsGram Error:", result);
+                        const errorMsg = result.description || result.error || "перегляд відхилено";
+                        
+                        let title = "Рекламу перервано ⚠️";
+                        let text = `<p>Для отримання бонусу необхідно переглянути відео повністю без пропусків. Спробуйте ще раз! (Статус: ${errorMsg})</p>`;
+                        
+                        if (errorMsg.includes("нет доступной рекламы") || errorMsg.toLowerCase().includes("no ad") || errorMsg.toLowerCase().includes("no_fill")) {
+                            title = "Реклама тимчасово недоступна ⚠️";
+                            text = `<p>Наразі у провайдера немає доступної реклами для показу. Будь ласка, спробуйте ще раз трохи пізніше! (Статус: ${errorMsg})</p>`;
+                        }
+
+                        showModal(title, text, [
+                            { text: "Спробувати знову", class: "btn-secondary" }
                         ]);
-                    } else {
-                        userProfile.startingBonus = 1500; // +1.5M ₴
-                        localStorage.setItem('last_ad_reward_time', Date.now().toString());
-                        showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
-                            { text: "Чудово! 🚀", class: "btn-primary" }
+                    });
+                } catch (err) {
+                    console.error("Synchronous AdsGram show exception caught", err);
+                    if (!adResolved) {
+                        adResolved = true;
+                        clearTimeout(safetyTimeout);
+                        btnWatchAd.disabled = false;
+                        if (btnTextSpan) btnTextSpan.innerText = originalText;
+                        updateAdButtonText();
+                        showModal("Помилка ініціалізації реклами ⚠️", `<p>Сталася помилка при запуску реклами: ${err.message || err}</p>`, [
+                            { text: "Зрозуміло", class: "btn-secondary" }
                         ]);
                     }
-                    updateAdButtonText();
-                }).catch((result) => {
-                    if (adResolved) return;
-                    adResolved = true;
-                    clearTimeout(safetyTimeout);
-                    btnWatchAd.disabled = false;
-                    if (btnTextSpan) btnTextSpan.innerText = originalText;
-                    updateAdButtonText();
-
-                    console.warn("AdsGram Error:", result);
-                    const errorMsg = result.description || result.error || "перегляд відхилено";
-                    
-                    let title = "Рекламу перервано ⚠️";
-                    let text = `<p>Для отримання бонусу необхідно переглянути відео повністю без пропусків. Спробуйте ще раз! (Статус: ${errorMsg})</p>`;
-                    
-                    if (errorMsg.includes("нет доступной рекламы") || errorMsg.toLowerCase().includes("no ad") || errorMsg.toLowerCase().includes("no_fill")) {
-                        title = "Реклама тимчасово недоступна ⚠️";
-                        text = `<p>Наразі у провайдера немає доступної реклами для показу. Будь ласка, спробуйте ще раз трохи пізніше! (Статус: ${errorMsg})</p>`;
-                    }
-
-                    showModal(title, text, [
-                        { text: "Спробувати знову", class: "btn-secondary" }
-                    ]);
-                });
+                }
             } else {
                 showModal("Помилка завантаження ⚠️", "<p>Служба реклами AdsGram наразі недоступна. Будь ласка, перевірте з'єднання з інтернетом або спробуйте пізніше.</p>", [
                     { text: "Зрозуміло", class: "btn-secondary" }
