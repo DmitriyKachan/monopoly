@@ -3,7 +3,7 @@
 // ==========================================================================
 
 import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
-import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback, triggerConfetti } from './ui.js';
+import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback, triggerConfetti, showSpecialSpaceModal } from './ui.js';
 import { MultiplayerManager } from './multiplayer.js';
 
 // Game state instance
@@ -649,116 +649,136 @@ function startNewGame(playerList) {
 }
 
 // Click on cell shows deed card properties details (restricted to own properties on player's turn)
+// Click on cell shows details (anyone can inspect any cell)
 function handleCellClick(index) {
     const space = game.spaces[index];
+    const localPlayerId = isMultiplayerGame ? mp.playerId : 0; // В синглплеере игрок - 0, в мультиплеере - mp.playerId
+
     if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
-        const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
         const isSelf = space.owner === localPlayerId;
-        
-        if (!isSelf) {
-            // Cannot inspect or click properties not owned by self (requested by user)
-            return;
-        }
-
         const isMyTurn = game.currentPlayerIndex === localPlayerId;
-        if (!isMyTurn) {
-            // Can only interact with properties during own turn
-            return;
+        
+        // Получаем имя владельца, если оно есть
+        let ownerName = null;
+        if (space.owner !== null) {
+            const ownerObj = game.players.find(p => p.id === space.owner);
+            if (ownerObj) {
+                ownerName = ownerObj.name;
+            }
         }
 
-        showPropertyModal(
-            space,
-            () => {}, // buy handler (only triggered inside actual landing workflow)
-            () => {}, 
-            true, // isSelfOwner
-            () => {
-                // Check if player owns all properties of the color group (monopoly)
-                let allOwnedBySelf = false;
-                if (space.group) {
-                    const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
-                    allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
-                }
+        if (isSelf && isMyTurn) {
+            // Своя компания в свой ход: показываем кнопки управления (апгрейд, залог, выкуп)
+            showPropertyModal(
+                space,
+                null, // onBuy
+                null, // onDecline
+                true, // isSelfOwner
+                () => {
+                    // Check if player owns all properties of the color group (monopoly)
+                    let allOwnedBySelf = false;
+                    if (space.group) {
+                        const sameGroupSpaces = game.spaces.filter(s => s.group === space.group);
+                        allOwnedBySelf = sameGroupSpaces.every(s => s.owner === localPlayerId);
+                    }
 
-                if (!allOwnedBySelf) {
-                    alert("Ви не можете будувати філії, поки не зберете монополію (всі компанії одного кольору)!");
-                    return;
-                }
+                    if (!allOwnedBySelf) {
+                        alert("Ви не можете будувати філії, поки не зберете монополію (всі компанії одного кольору)!");
+                        return;
+                    }
 
-                // Upgrade handler
-                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
-                    const success = game.upgradeProperty(mp.playerId, space.id);
-                    if (success) {
-                        mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для будівництва філії!");
+                    // Upgrade handler
+                    if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
+                        const success = game.upgradeProperty(mp.playerId, space.id);
+                        if (success) {
+                            mp.sendAction({ type: 'upgrade', playerId: mp.playerId, spaceId: space.id });
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для будівництва філії!");
+                        }
+                    } else if (!isMultiplayerGame) {
+                        const success = game.upgradeProperty(game.currentPlayerIndex, space.id);
+                        if (success) {
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для будівництва філії!");
+                        }
                     }
-                } else if (!isMultiplayerGame) {
-                    const success = game.upgradeProperty(game.currentPlayerIndex, space.id);
-                    if (success) {
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для будівництва філії!");
+                },
+                () => {
+                    // Mortgage handler
+                    if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
+                        const success = game.mortgageProperty(mp.playerId, space.id);
+                        if (success) {
+                            mp.sendAction({ type: 'mortgage', playerId: mp.playerId, spaceId: space.id });
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
+                        }
+                    } else if (!isMultiplayerGame) {
+                        const success = game.mortgageProperty(game.currentPlayerIndex, space.id);
+                        if (success) {
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
+                        }
                     }
-                }
-            },
-            () => {
-                // Mortgage handler
-                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
-                    const success = game.mortgageProperty(mp.playerId, space.id);
-                    if (success) {
-                        mp.sendAction({ type: 'mortgage', playerId: mp.playerId, spaceId: space.id });
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
+                },
+                () => {
+                    // Unmortgage handler
+                    if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
+                        const success = game.unmortgageProperty(mp.playerId, space.id);
+                        if (success) {
+                            mp.sendAction({ type: 'unmortgage', playerId: mp.playerId, spaceId: space.id });
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для викупу майна!");
+                        }
+                    } else if (!isMultiplayerGame) {
+                        const success = game.unmortgageProperty(game.currentPlayerIndex, space.id);
+                        if (success) {
+                            renderBoard(game, handleCellClick);
+                            renderPlayersHUD(game);
+                            updateGameLog(game);
+                            hideModal();
+                        } else {
+                            alert("Недостатньо грошей для викупу майна!");
+                        }
                     }
-                } else if (!isMultiplayerGame) {
-                    const success = game.mortgageProperty(game.currentPlayerIndex, space.id);
-                    if (success) {
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
-                    }
-                }
-            },
-            () => {
-                // Unmortgage handler
-                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
-                    const success = game.unmortgageProperty(mp.playerId, space.id);
-                    if (success) {
-                        mp.sendAction({ type: 'unmortgage', playerId: mp.playerId, spaceId: space.id });
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для викупу майна!");
-                    }
-                } else if (!isMultiplayerGame) {
-                    const success = game.unmortgageProperty(game.currentPlayerIndex, space.id);
-                    if (success) {
-                        renderBoard(game, handleCellClick);
-                        renderPlayersHUD(game);
-                        updateGameLog(game);
-                        hideModal();
-                    } else {
-                        alert("Недостатньо грошей для викупу майна!");
-                    }
-                }
-            }
-        );
+                },
+                ownerName
+            );
+        } else {
+            // Чужая ячейка, свободная ячейка или своя в чужой ход: только для просмотра
+            showPropertyModal(
+                space,
+                null, // onBuy = null -> скроет кнопки покупки
+                null, // onDecline = null
+                isSelf, // isSelfOwner
+                null, // onUpgrade = null -> скроет кнопку улучшения
+                null, // onMortgage = null -> скроет кнопку залога
+                null, // onUnmortgage = null -> скроет кнопку выкупа
+                ownerName
+            );
+        }
+    } else {
+        // Некоммерческая клетка (Старт, Тюрьма, Налог, Парковка, Шанс)
+        showSpecialSpaceModal(space, game.freeParkingCash);
     }
 }
 
@@ -1131,6 +1151,12 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
         if (isMultiplayerGame && claimed > 0 && playerId === mp.playerId) {
             mp.sendAction({ type: 'claim_parking', playerId, amount: claimed });
         }
+        if (claimed > 0) {
+            const isLocal = isMultiplayerGame ? (playerId === mp.playerId) : (playerId === 0);
+            if (isLocal) {
+                triggerConfetti();
+            }
+        }
         renderPlayersHUD(game);
         updateGameLog(game);
         if (isMultiplayerGame) {
@@ -1185,6 +1211,10 @@ function applyChanceCardAction(playerId, card) {
         player.money += card.amount;
         if (card.amount > 0) {
             game.log(`${player.name} отримав ₴${card.amount} від картки Шанс`, 'gain');
+            const isLocal = isMultiplayerGame ? (playerId === mp.playerId) : (playerId === 0);
+            if (isLocal) {
+                triggerConfetti();
+            }
         } else {
             game.log(`${player.name} втратив ₴${Math.abs(card.amount)} від картки Шанс`, 'pay');
         }
@@ -1198,6 +1228,10 @@ function applyChanceCardAction(playerId, card) {
         if (card.target === 0) {
             player.money += 2000;
             game.log(`${player.name} пройшов Старт і отримав ₴2,000`, 'gain');
+            const isLocal = isMultiplayerGame ? (playerId === mp.playerId) : (playerId === 0);
+            if (isLocal) {
+                triggerConfetti();
+            }
         }
         updatePlayerTokens(game);
     }

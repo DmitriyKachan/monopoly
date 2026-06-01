@@ -307,11 +307,10 @@ export function animateDiceRoll(d1, d2, callback) {
                 setTimeout(() => flash.remove(), 600);
             }
 
-            // Add neon pulse glow and trigger confetti to double
+            // Add neon pulse glow to double
             if (d1 === d2) {
                 sumEl.style.boxShadow = '0 0 15px var(--color-yellow)';
                 setTimeout(() => sumEl.style.boxShadow = 'none', 1000);
-                triggerConfetti();
             }
             
             callback();
@@ -391,20 +390,22 @@ export function renderPlayersHUD(gameState) {
 // Log view scroller
 export function updateGameLog(gameState) {
     const logEl = document.getElementById('game-log');
-    logEl.innerHTML = '';
+    if (logEl) {
+        logEl.innerHTML = '';
 
-    gameState.logs.forEach(log => {
-        const entry = document.createElement('div');
-        entry.className = `log-entry ${log.type}`;
-        entry.innerText = log.text;
-        logEl.appendChild(entry);
-    });
+        gameState.logs.forEach(log => {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${log.type}`;
+            entry.innerText = log.text;
+            logEl.appendChild(entry);
+        });
 
-    logEl.scrollTop = logEl.scrollHeight;
+        logEl.scrollTop = logEl.scrollHeight;
+    }
 }
 
 // Display Property Info card details in popup modal
-export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, onUpgrade = null, onMortgage = null, onUnmortgage = null) {
+export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, onUpgrade = null, onMortgage = null, onUnmortgage = null, ownerName = null) {
     const isSpecial = space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY;
     const headerColor = space.group ? `var(--prop-${space.group})` : '#475569';
     
@@ -415,6 +416,14 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
             </div>
             <div class="deed-body">
     `;
+
+    if (ownerName) {
+        detailsHtml += `
+            <div class="deed-row highlight" style="border-bottom: 2px solid rgba(255, 215, 0, 0.2); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                <span>Власник</span><strong>${ownerName}</strong>
+            </div>
+        `;
+    }
 
     if (space.isMortgaged) {
         detailsHtml += `
@@ -458,8 +467,12 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
 
     const buttons = [];
     if (!isSelfOwner) {
-        buttons.push({ text: `Придбати за ₴${space.price}`, class: 'btn-primary', onClick: onBuy });
-        buttons.push({ text: 'Відхилити', class: 'btn-secondary', onClick: onDecline });
+        if (onBuy && onDecline) {
+            buttons.push({ text: `Придбати за ₴${space.price}`, class: 'btn-primary', onClick: onBuy });
+            buttons.push({ text: 'Відхилити', class: 'btn-secondary', onClick: onDecline });
+        } else {
+            buttons.push({ text: 'Закрити', class: 'btn-secondary' });
+        }
     } else {
         if (space.isMortgaged) {
             const cost = Math.floor(space.price * 0.55);
@@ -479,6 +492,63 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
     }
 
     showModal("Комерційна Пропозиція", detailsHtml, buttons);
+}
+
+// Display Special Space details in modal
+export function showSpecialSpaceModal(space, currentFund = 0) {
+    let title = space.name;
+    let icon = "fa-circle-info";
+    let color = "var(--color-primary)";
+    let desc = "";
+
+    if (space.type === SPACE_TYPES.START) {
+        title = "Клітка Старт 🏁";
+        icon = "fa-flag-checkered";
+        color = "var(--color-yellow)";
+        desc = "Стартова позиція гри. Кожного разу, коли ви проходите або зупиняєтесь на цій клітці, ви отримуєте зарплату в розмірі <strong>₴2,000</strong>.";
+    } else if (space.type === SPACE_TYPES.JAIL) {
+        title = "Тюрма / Відпочинок 🛡️";
+        icon = "fa-shield-halved";
+        color = "var(--color-info)";
+        desc = "Якщо ви просто зупинилися тут, ви вважаєтесь 'Звичайним відвідувачем' і можете спокійно відпочивати. Якщо ж вас відправили сюди за порушення правил, вам доведеться пропустити ходи або заплатити штраф ₴500 для виходу.";
+    } else if (space.type === SPACE_TYPES.FREE_PARKING) {
+        title = "Благодійний Фонд 🏦";
+        icon = "fa-hand-holding-heart";
+        color = "var(--color-success)";
+        desc = `Тут накопичуються всі податки та штрафи гравців. Якщо ви зупинитесь на цій клітці, ви отримаєте весь накопичений джекпот фонду!<br><br>Поточний баланс фонду: <strong class="text-success" style="font-size: 1.1rem;">₴${currentFund}</strong>`;
+    } else if (space.type === SPACE_TYPES.GO_TO_JAIL) {
+        title = "Іди в Тюрьму! 🚨";
+        icon = "fa-triangle-exclamation";
+        color = "var(--color-danger)";
+        desc = "Ви заарештовані! Негайно перемістіться на клітку Тюрьма. Ви не проходите повз Старт і не отримуєте зарплату.";
+    } else if (space.type === SPACE_TYPES.CHANCE) {
+        title = "Telegram Premium Подія ✉️";
+        icon = "fa-envelope-open-text";
+        color = "var(--color-accent)";
+        desc = "Зупинка на цій клітці відкриває випадкову картку Telegram-події. Ви можете як отримати прибуток, так і втратити гроші, або даже потрапити в тюрьму.";
+    } else if (space.type === SPACE_TYPES.TAX) {
+        title = "Податки 💸";
+        icon = "fa-sack-xmark";
+        color = "var(--color-warning)";
+        desc = `Зупинка на цій клітці зобов'язує вас сплатити податок банку. Всі сплачені податки відправляються в Благодійний Фонд.`;
+    }
+
+    const colorHex = color.includes('primary') ? '#3b82f6' : 
+                     color.includes('yellow') ? '#eab308' : 
+                     color.includes('success') ? '#10b981' : 
+                     color.includes('danger') ? '#ef4444' : 
+                     color.includes('accent') ? '#a855f7' : 
+                     color.includes('warning') ? '#f59e0b' : '#3b82f6';
+
+    const content = `
+        <div class="chance-popup-card" style="border-color: ${colorHex}; box-shadow: 0 0 25px ${colorHex}40; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+            <div class="chance-icon" style="color: ${colorHex};"><i class="fa-solid ${icon}"></i></div>
+            <h4 class="chance-title" style="color: #ffffff;">${title}</h4>
+            <p class="chance-text" style="color: var(--text-secondary);">${desc}</p>
+        </div>
+    `;
+
+    showModal("Інформація про ячейку", content, [{ text: "Зрозуміло", class: "btn-primary" }]);
 }
 
 // Display Chance card popup modal
