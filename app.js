@@ -46,6 +46,32 @@ if (window.Adsgram) {
     });
 }
 
+// Cooldown settings (30 minutes in milliseconds)
+const AD_COOLDOWN_MS = 30 * 60 * 1000;
+
+function getAdRewardRemainingTime() {
+    const lastRewarded = localStorage.getItem('last_ad_reward_time');
+    if (!lastRewarded) return 0;
+    const elapsed = Date.now() - parseInt(lastRewarded, 10);
+    const remaining = AD_COOLDOWN_MS - elapsed;
+    return remaining > 0 ? remaining : 0;
+}
+
+function updateAdButtonText() {
+    const btnWatchAd = document.getElementById('btn-watch-ad');
+    if (!btnWatchAd) return;
+    const btnText = btnWatchAd.querySelector('.btn-text');
+    if (!btnText) return;
+
+    const remaining = getAdRewardRemainingTime();
+    if (remaining > 0) {
+        const remainingMin = Math.ceil(remaining / 60000);
+        btnText.innerText = `Підтримати рекламою 📺 (Бонус через ${remainingMin} хв)`;
+    } else {
+        btnText.innerText = "Бонус за рекламу 📺 (+1.5M ₴)";
+    }
+}
+
 if (tg) {
     tg.ready();
     tg.expand();
@@ -329,6 +355,10 @@ function setupMenuHandlers() {
     // AdsGram Rewarded Video Ad Handler
     const btnWatchAd = document.getElementById('btn-watch-ad');
     if (btnWatchAd) {
+        updateAdButtonText();
+        // Update button timer periodically
+        setInterval(updateAdButtonText, 30000); // every 30 seconds
+
         btnWatchAd.addEventListener('click', () => {
             if (!AdController && window.Adsgram) {
                 AdController = window.Adsgram.init({
@@ -338,20 +368,31 @@ function setupMenuHandlers() {
 
             if (AdController) {
                 btnWatchAd.disabled = true;
-                const originalText = btnWatchAd.querySelector('.btn-text').innerText;
-                btnWatchAd.querySelector('.btn-text').innerText = "Завантаження реклами...";
+                const btnTextSpan = btnWatchAd.querySelector('.btn-text');
+                const originalText = btnTextSpan ? btnTextSpan.innerText : "Бонус за рекламу 📺 (+1.5M ₴)";
+                if (btnTextSpan) btnTextSpan.innerText = "Завантаження реклами...";
 
                 AdController.show().then((result) => {
                     btnWatchAd.disabled = false;
-                    btnWatchAd.querySelector('.btn-text').innerText = originalText;
 
-                    userProfile.startingBonus = 1500; // +1.5M ₴
-                    showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
-                        { text: "Чудово! 🚀", class: "btn-primary" }
-                    ]);
+                    const remaining = getAdRewardRemainingTime();
+                    if (remaining > 0) {
+                        const remainingMin = Math.ceil(remaining / 60000);
+                        showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 30 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
+                            { text: "Дякую! 🥰", class: "btn-primary" }
+                        ]);
+                    } else {
+                        userProfile.startingBonus = 1500; // +1.5M ₴
+                        localStorage.setItem('last_ad_reward_time', Date.now().toString());
+                        showModal("Дякуємо за підтримку! ❤️", "<p>Ви успішно переглянули відеорекламу. У наступній одиночній грі ваш стартовий баланс становитиме <strong>16,500,000 ₴</strong> (бонус +1,500,000 ₴)!</p>", [
+                            { text: "Чудово! 🚀", class: "btn-primary" }
+                        ]);
+                    }
+                    updateAdButtonText();
                 }).catch((result) => {
                     btnWatchAd.disabled = false;
-                    btnWatchAd.querySelector('.btn-text').innerText = originalText;
+                    if (btnTextSpan) btnTextSpan.innerText = originalText;
+                    updateAdButtonText();
 
                     console.warn("AdsGram Error:", result);
                     const errorMsg = result.description || result.error || "перегляд відхилено";
