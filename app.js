@@ -48,9 +48,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const isDebugAd = urlParams.has('debug_ad') || 
                   urlParams.get('debug') === 'true' || 
                   window.location.hostname === 'localhost' || 
-                  window.location.hostname === '127.0.0.1' || 
-                  (tg && (tg.platform === 'desktop' || tg.platform === 'web')) ||
-                  !tg;
+                  window.location.hostname === '127.0.0.1';
 
 function initializeAdsGram() {
     if (window.Adsgram && !AdController) {
