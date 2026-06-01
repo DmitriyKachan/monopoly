@@ -149,21 +149,28 @@ async def handle_connection(websocket):
                 tg_id = data.get("tg_id")
                 if tg_id:
                     import bot
-                    db = bot.db_load()
-                    if "user_data" not in db:
-                        db["user_data"] = {}
-                    
                     tg_id_str = str(tg_id)
-                    if tg_id_str not in db["user_data"]:
-                        db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
-                        bot.db_save(db)
+                    def init_profile(db):
+                        if "user_data" not in db:
+                            db["user_data"] = {}
+                        if tg_id_str not in db["user_data"]:
+                            db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
                     
-                    user_wallet = db["user_data"][tg_id_str]
-                    await websocket.send(json.dumps({
-                        "type": "profile_data",
-                        "coins": user_wallet.get("coins", 0),
-                        "purchased_frames": user_wallet.get("purchased_frames", [])
-                    }))
+                    bot.update_db(init_profile)
+                    
+                    db = bot.db_load()
+                    if db and "user_data" in db and tg_id_str in db["user_data"]:
+                        user_wallet = db["user_data"][tg_id_str]
+                        await websocket.send(json.dumps({
+                            "type": "profile_data",
+                            "coins": user_wallet.get("coins", 0),
+                            "purchased_frames": user_wallet.get("purchased_frames", [])
+                        }))
+                    else:
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": "Не вдалося завантажити профіль з бази даних."
+                        }))
                     
             elif msg_type == "buy_frame":
                 tg_id = data.get("tg_id")
@@ -179,45 +186,54 @@ async def handle_connection(websocket):
                 if tg_id and frame_id in FRAME_PRICES:
                     import bot
                     price = FRAME_PRICES[frame_id]
-                    db = bot.db_load()
-                    if "user_data" not in db:
-                        db["user_data"] = {}
-                    
                     tg_id_str = str(tg_id)
-                    if tg_id_str not in db["user_data"]:
-                        db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
                     
-                    user_data = db["user_data"][tg_id_str]
-                    current_coins = user_data.get("coins", 0)
-                    purchased = user_data.get("purchased_frames", [])
+                    result = {"status": "error", "message": "Невідома помилка", "coins": 0}
                     
-                    if frame_id in purchased:
-                        # Рамка уже куплена, просто возвращаем успех
-                        await websocket.send(json.dumps({
-                            "type": "buy_frame_success",
-                            "frame_id": frame_id,
-                            "coins": current_coins
-                        }))
-                    elif current_coins >= price:
-                        # Списываем монеты и добавляем рамку
-                        user_data["coins"] = current_coins - price
-                        if frame_id not in purchased:
-                            purchased.append(frame_id)
-                        user_data["purchased_frames"] = purchased
+                    def perform_purchase(db):
+                        if "user_data" not in db:
+                            db["user_data"] = {}
+                        if tg_id_str not in db["user_data"]:
+                            db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
+                            
+                        user_data = db["user_data"][tg_id_str]
+                        current_coins = user_data.get("coins", 0)
+                        purchased = user_data.get("purchased_frames", [])
                         
-                        db["user_data"][tg_id_str] = user_data
-                        bot.db_save(db)
-                        
-                        await websocket.send(json.dumps({
-                            "type": "buy_frame_success",
-                            "frame_id": frame_id,
-                            "coins": user_data["coins"]
-                        }))
-                        print(f"Игрок {tg_id_str} успешно купил рамку {frame_id} за {price} коинов.")
+                        if frame_id in purchased:
+                            result["status"] = "already_purchased"
+                            result["coins"] = current_coins
+                        elif current_coins >= price:
+                            user_data["coins"] = current_coins - price
+                            if frame_id not in purchased:
+                                purchased.append(frame_id)
+                            user_data["purchased_frames"] = purchased
+                            db["user_data"][tg_id_str] = user_data
+                            
+                            result["status"] = "success"
+                            result["coins"] = user_data["coins"]
+                        else:
+                            result["status"] = "insufficient_funds"
+                            result["coins"] = current_coins
+                    
+                    if bot.update_db(perform_purchase):
+                        if result["status"] in ["success", "already_purchased"]:
+                            await websocket.send(json.dumps({
+                                "type": "buy_frame_success",
+                                "frame_id": frame_id,
+                                "coins": result["coins"]
+                            }))
+                            if result["status"] == "success":
+                                print(f"Игрок {tg_id_str} успешно купил рамку {frame_id} за {price} коинов.")
+                        elif result["status"] == "insufficient_funds":
+                            await websocket.send(json.dumps({
+                                "type": "error",
+                                "message": f"Недостатньо Моно-Коїнів! Потрібно: 🪙{price}, у вас: 🪙{result['coins']}"
+                            }))
                     else:
                         await websocket.send(json.dumps({
                             "type": "error",
-                            "message": f"Недостатньо Моно-Коїнів! Потрібно: 🪙{price}, у вас: 🪙{current_coins}"
+                            "message": "Не вдалося зберегти покупку в базі даних. Спробуйте ще раз."
                         }))
                         
             elif msg_type == "get_invoice":

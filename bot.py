@@ -7,52 +7,96 @@ import json
 import time
 import urllib.request
 import urllib.parse
+import threading
 
 CONFIG_FILE = 'config.json'
 DEFAULT_TOKEN = ''
 
 DB_BIN_ID = "deaeead"
 DB_URL = f"https://extendsclass.com/api/json-storage/bin/{DB_BIN_ID}"
+DB_LOCK = threading.Lock()
 
 def db_load():
     req = urllib.request.Request(DB_URL, method='GET')
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                if data is not None and isinstance(data, dict) and "users" in data:
+                    return data
+        except Exception as e:
+            print(f"Помилка завантаження БД з хмари (спроба {attempt+1}): {e}")
+            time.sleep(1)
+            
+    # Локальний бекап як резервний варіант
+    print("Спроба завантажити дані з локального бекапу...")
     try:
-        with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode('utf-8'))
+        if os.path.exists("db_local_backup.json"):
+            with open("db_local_backup.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if data is not None and isinstance(data, dict) and "users" in data:
+                    print("Успішно завантажено локальний бекап!")
+                    return data
     except Exception as e:
-        print(f"Помилка завантаження БД з хмари: {e}")
-        return {"telegram_chat_id": None, "users": [], "user_data": {}}
+        print(f"Помилка читання локального бекапу: {e}")
+    return None
 
 def db_save(data):
+    if not data or not isinstance(data, dict) or "users" not in data:
+        print("Помилка: Спроба зберегти некоректні або порожні дані в БД!")
+        return False
+        
     req = urllib.request.Request(
         DB_URL, 
         data=json.dumps(data).encode('utf-8'), 
         headers={"Content-Type": "application/json"}, 
         method='PUT'
     )
-    try:
-        with urllib.request.urlopen(req) as response:
-            res = json.loads(response.read().decode('utf-8'))
-            return res.get("status") == 0
-    except Exception as e:
-        print(f"Помилка збереження БД в хмару: {e}")
-        return False
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=5) as response:
+                res = json.loads(response.read().decode('utf-8'))
+                if res.get("status") == 0:
+                    # Записуємо локальний бекап
+                    try:
+                        with open("db_local_backup.json", "w", encoding="utf-8") as f:
+                            json.dump(data, f, indent=4, ensure_ascii=False)
+                    except Exception as backup_error:
+                        print(f"Помилка створення локального бекапу: {backup_error}")
+                    return True
+        except Exception as e:
+            print(f"Помилка збереження БД в хмару (спроба {attempt+1}): {e}")
+            time.sleep(1)
+    return False
+
+def update_db(update_fn):
+    with DB_LOCK:
+        db = db_load()
+        if db is None:
+            return False
+        try:
+            update_fn(db)
+        except Exception as e:
+            print(f"Помилка виконання функції оновлення БД: {e}")
+            return False
+        return db_save(db)
 
 def save_user(chat_id):
-    db = db_load()
-    if "users" not in db:
-        db["users"] = []
-    if "user_data" not in db:
-        db["user_data"] = {}
-    
     chat_id_str = str(chat_id)
-    if chat_id_str not in db["user_data"]:
-        db["user_data"][chat_id_str] = {"coins": 0, "purchased_frames": []}
-        
-    if chat_id not in db["users"]:
-        db["users"].append(chat_id)
-    db_save(db)
-    print(f"Користувач {chat_id} збережений в БД.")
+    def update(db):
+        if "users" not in db:
+            db["users"] = []
+        if "user_data" not in db:
+            db["user_data"] = {}
+        if chat_id_str not in db["user_data"]:
+            db["user_data"][chat_id_str] = {"coins": 0, "purchased_frames": []}
+        if chat_id not in db["users"]:
+            db["users"].append(chat_id)
+            
+    if update_db(update):
+        print(f"Користувач {chat_id} збережений в БД.")
+    else:
+        print(f"Помилка збереження користувача {chat_id}!")
 
 def create_invoice_link(token, title, description, payload, amount):
     params = {
@@ -268,26 +312,25 @@ def main():
                                     elif "pack_300" in pack_type:
                                         coins_to_add = 300
                                         
-                                        
                                     if coins_to_add > 0:
-                                        db = db_load()
-                                        if "user_data" not in db:
-                                            db["user_data"] = {}
-                                        
                                         u_id_str = str(pay_user_id)
-                                        if u_id_str not in db["user_data"]:
-                                            db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
-                                        
-                                        db["user_data"][u_id_str]["coins"] += coins_to_add
-                                        db_save(db)
-                                        
-                                        api_request(token, "sendMessage", {
-                                            "chat_id": pay_user_id,
-                                            "text": f"✅ *Оплата успішна!*\n\nНа ваш баланс зараховано *{coins_to_add}* Моно-Коїнів 🪙. Дякуємо за підтримку гри!",
-                                            "parse_mode": "Markdown"
-                                        })
-                                        print(f"Успішне нарахування {coins_to_add} коїнів користувачу {pay_user_id}")
-                                except Exception as e:
+                                        def update_coins(db):
+                                            if "user_data" not in db:
+                                                db["user_data"] = {}
+                                            if u_id_str not in db["user_data"]:
+                                                db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
+                                            db["user_data"][u_id_str]["coins"] += coins_to_add
+                                            
+                                        if update_db(update_coins):
+                                            api_request(token, "sendMessage", {
+                                                "chat_id": pay_user_id,
+                                                "text": f"✅ *Оплата успішна!*\n\nНа ваш баланс зараховано *{coins_to_add}* Моно-Коїнів 🪙. Дякуємо за підтримку гри!",
+                                                "parse_mode": "Markdown"
+                                            })
+                                            print(f"Успішне нарахування {coins_to_add} коїнів користувачу {pay_user_id}")
+                                        else:
+                                            print(f"Помилка збереження БД при нарахуванні {coins_to_add} коїнів користувачу {pay_user_id}!")
+                                catch Exception as e:
                                     print(f"Помилка обробки платежу {payload}: {e}")
                             continue
 
@@ -340,17 +383,22 @@ def main():
                                     dynamic_web_app_url = f"{dynamic_web_app_url}&tgWebAppStartParam={room_code}"
                                     
                                 # Дописываем монеты и купленные рамки в ссылку WebApp!
-                                db = db_load()
                                 u_id_str = str(chat_id)
-                                if "user_data" not in db:
-                                    db["user_data"] = {}
-                                if u_id_str not in db["user_data"]:
-                                    db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
-                                    db_save(db)
+                                def init_user(db):
+                                    if "user_data" not in db:
+                                        db["user_data"] = {}
+                                    if u_id_str not in db["user_data"]:
+                                        db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
                                 
-                                user_wallet = db["user_data"][u_id_str]
-                                wallet_coins = user_wallet.get("coins", 0)
-                                wallet_frames = ",".join(user_wallet.get("purchased_frames", []))
+                                update_db(init_user)
+                                
+                                db = db_load()
+                                wallet_coins = 0
+                                wallet_frames = ""
+                                if db and "user_data" in db and u_id_str in db["user_data"]:
+                                    user_wallet = db["user_data"][u_id_str]
+                                    wallet_coins = user_wallet.get("coins", 0)
+                                    wallet_frames = ",".join(user_wallet.get("purchased_frames", []))
                                 
                                 dynamic_web_app_url = f"{dynamic_web_app_url}&tg_id={chat_id}&coins={wallet_coins}&purchased_frames={wallet_frames}"
                             except Exception as e:
@@ -413,9 +461,9 @@ def main():
                             
                             if is_authorized:
                                 try:
-                                    db = db_load()
-                                    db["telegram_chat_id"] = chat_id
-                                    db_save(db)
+                                    def update_chat_id(db):
+                                        db["telegram_chat_id"] = chat_id
+                                    update_db(update_chat_id)
                                 except Exception as e:
                                     print(f"Помилка запису в БД: {e}")
 
@@ -483,7 +531,7 @@ def main():
                         elif text.startswith("/broadcast_changelog"):
                             user_id = user.get("id") if user else None
                             config = load_config()
-                            db = db_load()
+                            db = db_load() or {}
                             channel_chat_id = db.get("telegram_chat_id")
                             
                             # Админом является тот, чей chat_id указан в telegram_chat_id (если это приват),
