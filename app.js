@@ -1016,9 +1016,9 @@ function handleUserRoll() {
 
     // Check if in Jail
     if (activePlayer.inJail) {
-        showModal("Вихід з Укриття", "<p>Ви перебуваєте в укритті через повітряну тривогу. Оберіть дію:</p>", [
+        showModal("Вихід з Тюрми", "<p>Ви перебуваєте в тюрмі. Оберіть дію:</p>", [
             {
-                text: "Задонатити ₴500 волонтерам",
+                text: "Сплатити штраф ₴500",
                 class: "btn-primary",
                 onClick: () => {
                     const success = game.tryGetOutJail(activePlayer.id, 'pay');
@@ -1437,7 +1437,7 @@ function runBotTurn() {
 
     // Check if in Jail (Shelter)
     if (bot.inJail) {
-        game.log(`${bot.name} намагається вийти з укриття...`);
+        game.log(`${bot.name} намагається вийти з тюрми...`);
         updateGameLog(game);
         
         // If rich, pay to get out. Otherwise, try to roll double.
@@ -1672,7 +1672,7 @@ function handleRemoteAction(action) {
                 game.freeParkingCash += 500;
                 player.inJail = false;
                 player.jailTurns = 0;
-                game.log(`${player.name} задонатив ₴500 волонтерам і вийшов з укриття`, 'gain');
+                game.log(`${player.name} сплатив штраф ₴500 і вийшов з тюрми`, 'gain');
                 renderPlayersHUD(game);
                 updateGameLog(game);
             } else if (action.method === 'roll') {
@@ -1683,9 +1683,9 @@ function handleRemoteAction(action) {
                     if (res.forced) {
                         player.money -= 500;
                         game.freeParkingCash += 500;
-                        game.log(`${player.name} відбув тривогу 2 ходи, сплатив автоматичний збір ₴500 і вийшов з укриття`, 'gain');
+                        game.log(`${player.name} відбув термін 2 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
                     } else {
-                        game.log(`${player.name} викинув дубль (${res.d1}:${res.d2}) та вийшов з укриття безкоштовно!`, 'gain');
+                        game.log(`${player.name} викинув дубль (${res.d1}:${res.d2}) та вийшов з тюрми безкоштовно!`, 'gain');
                     }
                     animateDiceRoll(res.d1, res.d2, () => {
                         game.movePlayer(playerId, res.sum);
@@ -1696,7 +1696,7 @@ function handleRemoteAction(action) {
                     });
                 } else {
                     player.jailTurns++;
-                    game.log(`${player.name} кинув кубики (${res.d1}:${res.d2}) та не викинув дубль. Залишається в укритті`, 'system');
+                    game.log(`${player.name} кинув кубики (${res.d1}:${res.d2}) та не викинув дубль. Залишається в тюрмі`, 'system');
                     animateDiceRoll(res.d1, res.d2, () => {
                         renderPlayersHUD(game);
                         updateGameLog(game);

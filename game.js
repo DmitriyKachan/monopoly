@@ -67,9 +67,9 @@ export const SPACES_DATA = [
     },
     {
         id: 5,
-        name: "Укриття",
+        name: "Тюрма",
         type: SPACE_TYPES.JAIL,
-        description: "Просте відвідування або відбування тривоги"
+        description: "Просте відвідування або відбування терміну"
     },
     {
         id: 6,
@@ -154,9 +154,9 @@ export const SPACES_DATA = [
     },
     {
         id: 15,
-        name: "Повітряна Тривога",
+        name: "Іди в Тюрму",
         type: SPACE_TYPES.GO_TO_JAIL,
-        description: "Швидко прямуйте в укриття!"
+        description: "Негайно відправляйтеся в Тюрму!"
     },
     {
         id: 16,
@@ -202,7 +202,7 @@ export const CHANCE_CARDS = [
     { text: "Кешбек від Monobank! Отримайте ₴1,000", action: "money", amount: 1000 },
     { text: "Підтримка ЗСУ. Зробіть внесок у фонд ₴500", action: "tax", amount: 500 },
     { text: "Нова Пошта доставила вам дивіденди: ₴1,500", action: "money", amount: 1500 },
-    { text: "Повітряна тривога! Перейдіть в укриття без отримання грошей за старт", action: "gotojail" },
+    { text: "Порушення закону! Перейдіть в Тюрму без отримання грошей за старт", action: "gotojail" },
     { text: "Купівля генераторів для офісу. Сплатіть ₴1,200", action: "money", amount: -1200 },
     { text: "Рекламна кампанія в соцмережах пройшла успішно: отримайте ₴2,000", action: "money", amount: 2000 },
     { text: "Сплатіть комунальні послуги ДТЕК: ₴600", action: "tax", amount: 600 },
@@ -438,8 +438,8 @@ export class GameState {
 
         player.inJail = true;
         player.jailTurns = 0;
-        player.position = 5; // Shelter space ID is 5
-        this.log(`${player.name} відправлений в Укриття (Повітряна Тривога!)`, 'jail');
+        player.position = 5; // Jail space ID is 5
+        this.log(`${player.name} відправлений в Тюрму`, 'jail');
     }
 
     tryGetOutJail(playerId, method) {
@@ -452,7 +452,7 @@ export class GameState {
                 this.freeParkingCash += 500;
                 player.inJail = false;
                 player.jailTurns = 0;
-                this.log(`${player.name} задонатив ₴500 волонтерам і вийшов з укриття`, 'gain');
+                this.log(`${player.name} сплатив штраф ₴500 і вийшов з тюрми`, 'gain');
                 return true;
             }
         } else if (method === 'roll') {
@@ -460,19 +460,19 @@ export class GameState {
             if (isDouble) {
                 player.inJail = false;
                 player.jailTurns = 0;
-                this.log(`${player.name} викинув дубль (${d1}:${d2}) та вийшов з укриття безкоштовно!`, 'gain');
+                this.log(`${player.name} викинув дубль (${d1}:${d2}) та вийшов з тюрми безкоштовно!`, 'gain');
                 this.movePlayer(playerId, sum);
                 return { success: true, d1, d2, sum };
             } else {
                 player.jailTurns++;
-                this.log(`${player.name} кинув кубики (${d1}:${d2}) та не викинув дубль. Залишається в укритті`, 'system');
+                this.log(`${player.name} кинув кубики (${d1}:${d2}) та не викинув дубль. Залишається в тюрмі`, 'system');
                 if (player.jailTurns >= 2) {
                     // Forced out after 2 turns by paying
                     player.money -= 500;
                     this.freeParkingCash += 500;
                     player.inJail = false;
                     player.jailTurns = 0;
-                    this.log(`${player.name} відбув тривогу 2 ходи, сплатив автоматичний збір ₴500 і вийшов з укриття`, 'gain');
+                    this.log(`${player.name} відбув термін 2 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
                     this.movePlayer(playerId, sum);
                     return { success: true, d1, d2, sum, forced: true };
                 }
