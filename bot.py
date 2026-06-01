@@ -202,8 +202,16 @@ def main():
                         text = msg.get("text", "")
                         
                         # Сохраняем пользователя, если чат приватный
-                        if msg.get("chat", {}).get("type") == "private":
+                        is_private = msg.get("chat", {}).get("type") == "private"
+                        if is_private:
                             save_user(chat_id)
+                            # Видаляємо будь-які повідомлення користувача в ЛС, крім команд запуску та розсилки,
+                            # щоб чат залишався візуально "тільки для читання", як новинний канал!
+                            if text != "/start" and not text.startswith("/broadcast_changelog") and not text.startswith("/post_changelog") and text != "":
+                                try:
+                                    api_request(token, "deleteMessage", {"chat_id": chat_id, "message_id": msg["message_id"]})
+                                except Exception as e:
+                                    print(f"Не вдалося видалити повідомлення: {e}")
                         
                         if text == "/start":
                             # Load config dynamically to read updated ws_server_url without restart
