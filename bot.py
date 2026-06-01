@@ -238,7 +238,14 @@ def main():
                                 except Exception as e:
                                     print(f"Не вдалося видалити повідомлення: {e}")
                         
-                        if text == "/start":
+                        if text.startswith("/start"):
+                            # Извлекаем код комнаты (если он передан)
+                            # Формат: "/start 1234" -> "1234"
+                            room_code = None
+                            parts = text.split(" ")
+                            if len(parts) > 1:
+                                room_code = parts[1].strip()
+
                             # Load config dynamically to read updated ws_server_url without restart
                             try:
                                 dynamic_config = load_config()
@@ -255,28 +262,44 @@ def main():
                                 if dynamic_ws_server_url:
                                     param = urllib.parse.urlencode({"ws_server": dynamic_ws_server_url})
                                     dynamic_web_app_url = f"{dynamic_web_app_url}&{param}"
+
+                                # Добавляем код комнаты в ссылку запуска
+                                if room_code and len(room_code) == 4:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}&tgWebAppStartParam={room_code}"
                             except Exception as e:
                                 print(f"Помилка при читанні конфігурації: {e}")
                                 dynamic_web_app_url = f"{web_app_url}&t={int(time.time())}" if "?" in web_app_url else f"{web_app_url}?t={int(time.time())}"
+                                if room_code and len(room_code) == 4:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}&tgWebAppStartParam={room_code}"
                             
-                            welcome_msg = (
-                                f"Привіт, {first_name}! 🏦🇺🇦\n\n"
-                                "Ласкаво просимо до *Монополії Україна* — преміальної бізнес-стратегії прямо в Telegram!\n\n"
-                                "💼 *Твоя мета:* Створити найпотужнішу імперію брендів, викупити АТБ, Нову Пошту, Монобанк, будувати прибуткові філії та збанкрутувати суперників!\n\n"
-                                "⚡️ *Особливості гри:*\n"
-                                "• Нативне запрошення друзів одним кліком\n"
-                                "• Зручна система торгівлі та обміну\n"
-                                "• Розумний автономний бот АТБ-Борис 🤖 для одиночної гри\n"
-                                "• Преміальний 3D-дизайн та неонові ефекти\n\n"
-                                "Натискай кнопку нижче та розпочинай свою бізнес-імперію прямо зараз! 👇"
-                            )
+                            if room_code and len(room_code) == 4:
+                                welcome_msg = (
+                                    f"Привіт, {first_name}! 🎮🇺🇦\n\n"
+                                    f"Твій друг запросив тебе приєднатися до гри в *Монополію Україна*!\n\n"
+                                    f"Кімната для підключення: *{room_code}*.\n\n"
+                                    "Натискай кнопку нижче та відразу заходь у лобі очікування! 👇"
+                                )
+                                button_text = "Приєднатися до гри 🏦🎮"
+                            else:
+                                welcome_msg = (
+                                    f"Привіт, {first_name}! 🏦🇺🇦\n\n"
+                                    "Ласкаво просимо до *Монополії Україна* — преміальної бізнес-стратегії прямо в Telegram!\n\n"
+                                    "💼 *Твоя мета:* Створити найпотужнішу імперію брендів, викупити АТБ, Нову Пошту, Монобанк, будувати прибуткові філії та збанкрутувати суперників!\n\n"
+                                    "⚡️ *Особливості гри:*\n"
+                                    "• Нативне запрошення друзів одним кліком\n"
+                                    "• Зручна система торгівлі та обміну\n"
+                                    "• Розумний автономний бот АТБ-Борис 🤖 для одиночної гри\n"
+                                    "• Преміальний 3D-дизайн та неонові ефекти\n\n"
+                                    "Натискай кнопку нижче та розпочинай свою бізнес-імперію прямо зараз! 👇"
+                                )
+                                button_text = "Грати в Монополію 🏦🎮"
                             
                             # Inline Keyboard Markup with WebApp link
                             keyboard = {
                                 "inline_keyboard": [
                                     [
                                         {
-                                            "text": "Грати в Монополію 🏦🎮",
+                                            "text": button_text,
                                             "web_app": {"url": dynamic_web_app_url}
                                         }
                                     ]
@@ -289,7 +312,7 @@ def main():
                                 "parse_mode": "Markdown",
                                 "reply_markup": keyboard
                             })
-                            print(f"Надіслано привітання для {user.get('username', first_name)}")
+                            print(f"Надіслано привітання для {user.get('username', first_name) if user else 'Користувач'}")
                             
                         elif text.startswith("/setup_channel"):
                             is_authorized = is_private or is_channel

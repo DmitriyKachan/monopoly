@@ -183,12 +183,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Check for startapp parameters (auto-joining room)
     let hasStartParam = false;
-    if (tg) {
-        const startParam = tg.initDataUnsafe?.start_param;
-        if (startParam && startParam.length === 4) {
-            hasStartParam = true;
-            autoJoinRoomByCode(startParam);
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    const startParam = (tg && tg.initDataUnsafe?.start_param) || urlParams.get('startapp') || urlParams.get('tgWebAppStartParam');
+    if (startParam && startParam.length === 4) {
+        hasStartParam = true;
+        autoJoinRoomByCode(startParam);
     }
 
     // Fade out splash screen after 1.5s
@@ -290,7 +289,7 @@ function createRoomWorkflow(autoShare = false) {
         if (autoShare && mp.roomCode && !shareLinkOpened) {
             shareLinkOpened = true;
             const botUsername = "queuecomfybot";
-            const shareUrl = `https://t.me/${botUsername}/app?startapp=${mp.roomCode}`;
+            const shareUrl = `https://t.me/${botUsername}?start=${mp.roomCode}`;
             const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
             const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
