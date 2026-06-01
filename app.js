@@ -72,19 +72,30 @@ function updateAdButtonText() {
     }
 }
 
+// Load custom profile if saved, otherwise load from Telegram
+const savedProfile = localStorage.getItem('custom_user_profile');
+if (savedProfile) {
+    try {
+        const parsed = JSON.parse(savedProfile);
+        userProfile.name = parsed.name || userProfile.name;
+        userProfile.username = parsed.username || userProfile.username;
+        userProfile.avatar = parsed.avatar || userProfile.avatar;
+    } catch (e) {
+        console.error("Error parsing saved profile", e);
+    }
+} else if (tg && tg.initDataUnsafe?.user) {
+    const u = tg.initDataUnsafe.user;
+    userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
+    userProfile.username = u.username || 'player';
+    if (u.photo_url) {
+        userProfile.avatar = u.photo_url;
+    }
+}
+
 if (tg) {
     tg.ready();
     tg.expand();
     tg.setHeaderColor('#0b0f19');
-    
-    if (tg.initDataUnsafe?.user) {
-        const u = tg.initDataUnsafe.user;
-        userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
-        userProfile.username = u.username || 'player';
-        if (u.photo_url) {
-            userProfile.avatar = u.photo_url;
-        }
-    }
 }
 
 // Global DOM setup
@@ -115,6 +126,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupMenuHandlers();
     setupBackButton();
+
+    // Setup Navigation Tabs, Theme and Profile editing
+    setupMenuTabs();
+    initTheme();
+    setupProfileCustomization();
 });
 
 // Router Screen Switcher
@@ -1543,3 +1559,162 @@ function handleRemoteAction(action) {
             break;
     }
 }
+
+// ==========================================================================
+// TABS, CUSTOMIZATION & THEME CONTROLLERS
+// ==========================================================================
+
+function setupMenuTabs() {
+    const navItems = document.querySelectorAll('.menu-nav-bar .nav-item');
+    const tabContents = document.querySelectorAll('.menu-tab-content');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetTab = item.getAttribute('data-tab');
+
+            navItems.forEach(nav => nav.classList.remove('active'));
+            tabContents.forEach(tab => tab.classList.remove('active'));
+
+            item.classList.add('active');
+            const targetEl = document.getElementById(`tab-${targetTab}`);
+            if (targetEl) targetEl.classList.add('active');
+            
+            // Sync cabinet details if tab is profile
+            if (targetTab === 'profile') {
+                syncProfileTab();
+            }
+        });
+    });
+}
+
+function syncProfileTab() {
+    const avatarLg = document.getElementById('profile-avatar-lg');
+    if (avatarLg) avatarLg.src = userProfile.avatar;
+    
+    const nameLg = document.getElementById('profile-name-lg');
+    if (nameLg) nameLg.innerText = userProfile.name;
+    
+    const usernameLg = document.getElementById('profile-username-lg');
+    if (usernameLg) usernameLg.innerText = '@' + userProfile.username;
+}
+
+function initTheme() {
+    const savedTheme = localStorage.getItem('app_theme') || 'dark';
+    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-theme');
+        if (themeCheckbox) themeCheckbox.checked = true;
+        if (tg) tg.setHeaderColor('#f4f4f5');
+    } else {
+        document.body.classList.remove('light-theme');
+        if (themeCheckbox) themeCheckbox.checked = false;
+        if (tg) tg.setHeaderColor('#0b0f19');
+    }
+    
+    if (themeCheckbox) {
+        themeCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                document.body.classList.add('light-theme');
+                localStorage.setItem('app_theme', 'light');
+                if (tg) tg.setHeaderColor('#f4f4f5');
+            } else {
+                document.body.classList.remove('light-theme');
+                localStorage.setItem('app_theme', 'dark');
+                if (tg) tg.setHeaderColor('#0b0f19');
+            }
+        });
+    }
+}
+
+const PRESET_AVATARS = [
+    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120",
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120",
+    "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120",
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120",
+    "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=120"
+];
+
+function setupProfileCustomization() {
+    const editBtn = document.getElementById('btn-edit-profile');
+    if (!editBtn) return;
+    
+    editBtn.addEventListener('click', () => {
+        let selectedAvatar = userProfile.avatar;
+        
+        let modalHtml = `
+            <div style="display: flex; flex-direction: column; gap: 1rem; color: var(--text-primary);">
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Ім'я відображення:</label>
+                    <input type="text" id="edit-profile-name" value="${userProfile.name}" placeholder="Ваше ім'я"
+                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
+                </div>
+                
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Юзернейм:</label>
+                    <input type="text" id="edit-profile-username" value="${userProfile.username}" placeholder="username"
+                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
+                </div>
+                
+                <div>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Посилання на аватар:</label>
+                    <input type="text" id="edit-profile-avatar-url" value="${userProfile.avatar}" placeholder="https://..."
+                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
+                    <span class="avatar-presets-label">Або оберіть готовий аватар:</span>
+                    <div class="avatar-preset-grid">
+                        ${PRESET_AVATARS.map(url => `
+                            <img class="avatar-preset-item ${url === userProfile.avatar ? 'selected' : ''}" src="${url}" data-url="${url}">
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        showModal("Редагувати профіль ⚙️", modalHtml, [
+            {
+                text: "Зберегти ✅",
+                class: "btn-primary",
+                onClick: () => {
+                    const newName = document.getElementById('edit-profile-name').value.trim();
+                    const newUsername = document.getElementById('edit-profile-username').value.trim();
+                    const newAvatar = document.getElementById('edit-profile-avatar-url').value.trim();
+                    
+                    if (!newName) {
+                        alert("Ім'я не може быть порожнім!");
+                        return;
+                    }
+                    
+                    userProfile.name = newName;
+                    userProfile.username = newUsername || "player";
+                    userProfile.avatar = newAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80";
+                    
+                    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+                    
+                    // Update header HUD UI
+                    document.getElementById('user-name').innerText = userProfile.name;
+                    document.getElementById('user-avatar').src = userProfile.avatar;
+                    
+                    // Update cabinet UI
+                    syncProfileTab();
+                    hideModal();
+                }
+            },
+            {
+                text: "Скасувати",
+                class: "btn-secondary"
+            }
+        ]);
+        
+        // Preset clicks setup
+        const presetItems = document.querySelectorAll('.avatar-preset-item');
+        presetItems.forEach(item => {
+            item.addEventListener('click', () => {
+                presetItems.forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                const clickedUrl = item.getAttribute('data-url');
+                document.getElementById('edit-profile-avatar-url').value = clickedUrl;
+            });
+        });
+    });
+}
+

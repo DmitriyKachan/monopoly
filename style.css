@@ -1690,3 +1690,559 @@ body {
         min-width: 70px;
     }
 }
+
+/* ==========================================================================
+   MENU TAB NAVIGATION & SUB-PAGES
+   ========================================================================== */
+
+.menu-tab-content {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+    animation: fadeInTab 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-tab-content.active {
+    display: flex;
+}
+
+@keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bottom Navigation Bar */
+.menu-nav-bar {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: var(--bg-header);
+    backdrop-filter: blur(15px);
+    border-top: 1px solid var(--border-glass);
+    padding: 0.65rem 0.5rem;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 30;
+}
+
+.nav-item {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    padding: 0.4rem 1rem;
+    border-radius: 12px;
+}
+
+.nav-item i {
+    font-size: 1.25rem;
+    transition: transform 0.2s ease;
+}
+
+.nav-item:active i {
+    transform: scale(0.9);
+}
+
+.nav-item.active {
+    color: var(--color-primary);
+}
+
+.nav-item.active i {
+    color: var(--color-primary);
+    filter: drop-shadow(0 0 8px rgba(0, 87, 183, 0.4));
+}
+
+/* Offset menu-body scroll view for bottom navigation bar */
+.menu-body {
+    padding-bottom: 5.5rem !important;
+}
+
+/* ==========================================================================
+   CABINET & PROFILE STYLING
+   ========================================================================== */
+
+.profile-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.profile-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.06) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.profile-avatar-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid var(--color-primary);
+    box-shadow: 0 0 20px rgba(0, 87, 183, 0.3);
+    object-fit: cover;
+}
+
+.profile-details h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.profile-username {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.profile-badge {
+    background: linear-gradient(135deg, var(--color-yellow) 0%, #d97706 100%);
+    color: #000000;
+    font-weight: 800;
+    font-size: 0.65rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 50px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 0.5rem;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(217, 119, 6, 0.15);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'Outfit', sans-serif;
+}
+
+.ad-info-box {
+    background: rgba(168, 85, 247, 0.04);
+    border: 1px solid rgba(168, 85, 247, 0.12);
+    border-radius: 18px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.ad-info-box p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.theme-toggle-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* ==========================================================================
+   SUPPORT TAB STYLING
+   ========================================================================== */
+
+.support-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.support-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-yellow);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+.support-header i {
+    font-size: 1.4rem;
+}
+
+.support-card p {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.social-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-glass);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.social-btn:active {
+    background: rgba(255,255,255,0.08);
+}
+
+.social-btn i {
+    font-size: 1.15rem;
+    color: var(--color-primary);
+}
+
+/* ==========================================================================
+   TOGGLE SWITCH STYLING
+   ========================================================================== */
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-glass);
+    transition: .3s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+input:checked + .slider {
+    background-color: var(--color-primary);
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+.slider.round {
+    border-radius: 34px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
+}
+
+/* Avatar presets grid inside modal */
+.avatar-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+    margin: 0.8rem 0;
+    width: 100%;
+}
+
+.avatar-preset-item {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    object-fit: cover;
+}
+
+.avatar-preset-item:hover {
+    transform: scale(1.08);
+}
+
+.avatar-preset-item.selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 10px rgba(0, 87, 183, 0.5);
+    transform: scale(1.08);
+}
+
+.avatar-presets-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+    display: block;
+}
+
+/* ==========================================================================
+   PREMIUM LIGHT THEME OVERRIDES
+   ========================================================================== */
+
+.light-theme {
+    --bg-main: hsl(220, 20%, 94%);
+    --bg-card: rgba(255, 255, 255, 0.85);
+    --bg-card-solid: hsl(0, 0%, 100%);
+    --bg-header: rgba(255, 255, 255, 0.92);
+    
+    --text-primary: hsl(220, 30%, 10%);
+    --text-secondary: hsl(220, 15%, 35%);
+    --text-muted: hsl(220, 10%, 55%);
+    
+    --border-glow: rgba(0, 87, 183, 0.08);
+    --border-glass: rgba(0, 0, 0, 0.08);
+}
+
+.light-theme .profile-card,
+.light-theme .ad-info-box,
+.light-theme .support-card,
+.light-theme .menu-hero-card,
+.light-theme .user-pill,
+.light-theme .currency-pill,
+.light-theme .lobby-player-card,
+.light-theme .lobby-sub-panel,
+.light-theme .game-log-container,
+.light-theme .player-hud-card,
+.light-theme .theme-toggle-box {
+    background: var(--bg-card-solid);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--border-glass);
+}
+
+.light-theme .stat-item {
+    background: hsl(220, 10%, 97%);
+    border: 1px solid rgba(0, 0, 0, 0.03);
+}
+
+.light-theme .stat-value {
+    color: var(--text-primary);
+}
+
+.light-theme .social-btn {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.light-theme .social-btn:active {
+    background: hsl(220, 10%, 97%);
+}
+
+.light-theme .nav-item {
+    color: var(--text-muted);
+}
+
+.light-theme .nav-item.active {
+    color: var(--color-primary);
+}
+
+.light-theme .modal-container {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+}
+
+.light-theme .modal-header {
+    border-bottom: 1px solid var(--border-glass);
+    color: var(--text-primary);
+}
+
+.light-theme .modal-header h3 {
+    color: var(--text-primary);
+}
+
+.light-theme .modal-body {
+    color: var(--text-secondary);
+}
+
+.light-theme .modal-body label {
+    color: var(--text-primary);
+}
+
+.light-theme .modal-body input {
+    background: hsl(220, 10%, 97%) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-glass) !important;
+}
+
+.light-theme .modal-footer {
+    border-top: 1px solid var(--border-glass);
+}
+
+.light-theme .btn-secondary {
+    background: hsl(220, 10%, 90%);
+    color: var(--text-primary);
+}
+
+.light-theme .btn-secondary:active {
+    background: hsl(220, 10%, 85%);
+}
+
+.light-theme .menu-hero-card h2,
+.light-theme .profile-card h3,
+.light-theme .support-header span {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--text-primary);
+}
+
+.light-theme .logo-title {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: var(--text-primary);
+}
+
+/* Board light theme layout updates */
+.light-theme .monopoly-board {
+    background-color: hsl(220, 10%, 88%);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+}
+
+.light-theme .board-cell {
+    background-color: hsl(0, 0%, 100%);
+    border: 1.5px solid hsl(220, 10%, 83%);
+    color: hsl(220, 30%, 10%);
+}
+
+.light-theme .board-cell:hover {
+    background-color: hsl(220, 10%, 98%);
+}
+
+.light-theme .cell-name {
+    color: hsl(220, 20%, 30%) !important;
+}
+
+.light-theme .cell-price {
+    color: hsl(220, 15%, 45%) !important;
+}
+
+.light-theme .game-hud-header {
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-glass);
+    color: var(--text-primary);
+}
+
+.light-theme .game-turn-indicator {
+    color: var(--text-primary);
+}
+
+.light-theme .game-dashboard {
+    background: var(--bg-header);
+    border-top: 1px solid var(--border-glass);
+}
+
+.light-theme .log-entry {
+    border-bottom: 1px solid rgba(0,0,0,0.03);
+    color: var(--text-secondary);
+}
+
+.light-theme .log-entry.system {
+    color: var(--text-muted);
+}
+
+.light-theme .die {
+    background: #ffffff;
+    border: 1.5px solid hsl(220, 10%, 80%);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.light-theme .die .dot {
+    background-color: hsl(220, 30%, 15%);
+}
+
+.light-theme .dice-sum-display {
+    color: var(--text-primary);
+}
+
+.light-theme .lobby-avatar.connected {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.light-theme .lobby-player-card {
+    color: var(--text-primary);
+}
+
+.light-theme .room-code-display {
+    color: var(--text-primary);
+}
+
+.light-theme .lobby-help-text {
+    color: var(--text-secondary);
+}
+
+.light-theme .room-code-display span.text-yellow {
+    color: var(--color-primary);
+}
+
