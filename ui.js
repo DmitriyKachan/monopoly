@@ -36,6 +36,41 @@ export function hideModal() {
     modalOverlay.classList.remove('active');
 }
 
+// Helper to compute rent cost dynamically from plain JSON or GameState
+function getSpaceRentPrice(gameState, space) {
+    if (!space || space.owner === null) return 0;
+    
+    if (typeof gameState.getRentCost === 'function') {
+        return gameState.getRentCost(space.id);
+    }
+    
+    const ownerId = space.owner;
+    
+    if (space.group) { // STREET PROPERTY
+        let rent = space.rent[space.branches];
+        const sameGroupSpaces = gameState.spaces.filter(s => s.group === space.group);
+        const allOwnedBySame = sameGroupSpaces.every(s => s.owner === ownerId);
+        if (allOwnedBySame && space.branches === 0) {
+            rent *= 2;
+        }
+        return rent;
+    }
+    
+    if (space.type === SPACE_TYPES.STATION) {
+        const utilities = gameState.spaces.filter(s => s.type === SPACE_TYPES.UTILITY && s.owner === ownerId);
+        if (utilities.length > 0) {
+            return space.baseRent * 2;
+        }
+        return space.baseRent;
+    }
+    
+    if (space.type === SPACE_TYPES.UTILITY) {
+        return 7 * space.multiplier; // Average dice sum roll is 7
+    }
+    
+    return 0;
+}
+
 // Generate the board grid elements
 export function renderBoard(gameState, onCellClick) {
     const boardEl = document.getElementById('board');
@@ -98,11 +133,17 @@ export function renderBoard(gameState, onCellClick) {
             cell.appendChild(branchesEl);
         }
 
-        // 5. Price tag
+        // 5. Price / Rent tag
         if (space.price) {
             const priceEl = document.createElement('div');
-            priceEl.className = 'cell-price';
-            priceEl.innerText = `₴${space.price}`;
+            if (space.owner !== null) {
+                const rentVal = getSpaceRentPrice(gameState, space);
+                priceEl.className = 'cell-price cell-price-rent';
+                priceEl.innerText = `₴${rentVal}`;
+            } else {
+                priceEl.className = 'cell-price';
+                priceEl.innerText = `₴${space.price}`;
+            }
             cell.appendChild(priceEl);
         }
 
@@ -122,6 +163,18 @@ export function renderBoard(gameState, onCellClick) {
 
         boardEl.appendChild(cell);
     });
+
+    // 8. Board Center Space (Logo & Trade Container)
+    const centerEl = document.createElement('div');
+    centerEl.className = 'board-center';
+    centerEl.id = 'board-center';
+    centerEl.innerHTML = `
+        <div class="board-center-logo">
+            <span class="logo-text-top">МОНОПОЛІЯ</span>
+            <span class="logo-text-bottom">УКРАЇНА</span>
+        </div>
+    `;
+    boardEl.appendChild(centerEl);
 
     updatePlayerTokens(gameState);
 }
