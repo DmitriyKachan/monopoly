@@ -83,15 +83,19 @@ def update_db(update_fn):
 
 def save_user(chat_id):
     chat_id_str = str(chat_id)
-    def update(db):
-        if "users" not in db:
-            db["users"] = []
-        if "user_data" not in db:
-            db["user_data"] = {}
-        if chat_id_str not in db["user_data"]:
-            db["user_data"][chat_id_str] = {"coins": 0, "purchased_frames": []}
-        if chat_id not in db["users"]:
-            db["users"].append(chat_id)
+    db = db_load()
+    if db and "users" in db and chat_id in db["users"] and "user_data" in db and chat_id_str in db["user_data"]:
+        return
+        
+    def update(db_to_update):
+        if "users" not in db_to_update:
+            db_to_update["users"] = []
+        if "user_data" not in db_to_update:
+            db_to_update["user_data"] = {}
+        if chat_id_str not in db_to_update["user_data"]:
+            db_to_update["user_data"][chat_id_str] = {"coins": 0, "purchased_frames": []}
+        if chat_id not in db_to_update["users"]:
+            db_to_update["users"].append(chat_id)
             
     if update_db(update):
         print(f"Користувач {chat_id} збережений в БД.")
@@ -384,21 +388,25 @@ def main():
                                     
                                 # Дописываем монеты и купленные рамки в ссылку WebApp!
                                 u_id_str = str(chat_id)
-                                def init_user(db):
-                                    if "user_data" not in db:
-                                        db["user_data"] = {}
-                                    if u_id_str not in db["user_data"]:
-                                        db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
-                                
-                                update_db(init_user)
-                                
                                 db = db_load()
                                 wallet_coins = 0
                                 wallet_frames = ""
+                                
                                 if db and "user_data" in db and u_id_str in db["user_data"]:
                                     user_wallet = db["user_data"][u_id_str]
                                     wallet_coins = user_wallet.get("coins", 0)
                                     wallet_frames = ",".join(user_wallet.get("purchased_frames", []))
+                                else:
+                                    def init_user(db_to_update):
+                                        if "user_data" not in db_to_update:
+                                            db_to_update["user_data"] = {}
+                                        if u_id_str not in db_to_update["user_data"]:
+                                            db_to_update["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
+                                        if "users" not in db_to_update:
+                                            db_to_update["users"] = []
+                                        if chat_id not in db_to_update["users"]:
+                                            db_to_update["users"].append(chat_id)
+                                    update_db(init_user)
                                 
                                 dynamic_web_app_url = f"{dynamic_web_app_url}&tg_id={chat_id}&coins={wallet_coins}&purchased_frames={wallet_frames}"
                             except Exception as e:
