@@ -11,6 +11,63 @@ let game = new GameState();
 let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
 
+let tgId = null;
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('tg_id')) {
+    tgId = urlParams.get('tg_id');
+} else if (tg && tg.initDataUnsafe?.user) {
+    tgId = tg.initDataUnsafe.user.id.toString();
+}
+
+if (urlParams.has('coins')) {
+    userProfile.coins = parseInt(urlParams.get('coins')) || 0;
+}
+if (urlParams.has('purchased_frames')) {
+    const pStr = urlParams.get('purchased_frames');
+    userProfile.purchasedFrames = pStr ? pStr.split(',') : [];
+}
+
+// Setup premium store callbacks
+mp.onProfileDataCallback = (data) => {
+    userProfile.coins = data.coins;
+    userProfile.purchasedFrames = data.purchased_frames;
+    const modalTitle = document.getElementById('modal-title');
+    if (modalTitle && modalTitle.innerText.includes("оформлення")) {
+        showFrameShopModal();
+    }
+};
+
+mp.onInvoiceLinkCallback = (data) => {
+    window.closeLoaderModal();
+    if (tg) {
+        tg.openInvoice(data.url, (status) => {
+            if (status === 'paid') {
+                triggerConfetti();
+                if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {
+                    mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId }));
+                }
+            } else {
+                showFrameShopModal();
+            }
+        });
+    }
+};
+
+mp.onBuyFrameSuccessCallback = (data) => {
+    triggerConfetti();
+    userProfile.coins = data.coins;
+    if (!userProfile.purchasedFrames.includes(data.frame_id)) {
+        userProfile.purchasedFrames.push(data.frame_id);
+    }
+    userProfile.frame = data.frame_id;
+    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+    updateUserAvatarFrames();
+    syncProfileTab();
+    showModal("Успішна покупка! 🎉", "<p>Ви придбали та одягли рамку!</p>", [
+        { text: "Клас!", class: "btn-primary", onClick: showFrameShopModal }
+    ]);
+};
+
 mp.onPlayerLeftCallback = (name) => {
     game.log(`⚠️ Гравець ${name} залишив гру!`, 'system');
     updateGameLog(game);
@@ -27,7 +84,7 @@ mp.onPlayerLeftCallback = (name) => {
     }
 };
 
-let userProfile = { name: "Гість", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 } };
+let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
 // Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
 const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
@@ -2246,24 +2303,40 @@ function setupProfileCustomization() {
 // AVATAR FRAME SHOP CONTROLLER
 // ==========================================================================
 const FRAME_ITEMS = [
-    { id: "neon", name: "Неонова Аура 💎", desc: "Світиться яскравим блакитним неон-світлом", price: 50, starsPrice: 50, class: "frame-neon" },
-    { id: "gold", name: "Кібер Золото 👑", desc: "Рамка з анімованим золотим градієнтом", price: 100, starsPrice: 100, class: "frame-gold" },
-    { id: "rainbow", name: "Веселковий Рейв 🌈", desc: "Анімований перелив кольорів веселки", price: 150, starsPrice: 150, class: "frame-rainbow" }
+    { id: "neon", name: "Неонова Аура 💎", desc: "Світиться яскравим блакитним неон-світлом", price: 100, class: "frame-neon" },
+    { id: "gold", name: "Кібер Золото 👑", desc: "Рамка з анімованим золотим градієнтом", price: 250, class: "frame-gold" },
+    { id: "rainbow", name: "Веселковий Рейв 🌈", desc: "Анімований перелив кольорів веселки", price: 500, class: "frame-rainbow" }
 ];
 
+function ensureWsConnected(callback) {
+    if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {
+        callback();
+    } else {
+        mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
+            callback();
+        });
+    }
+}
+
+window.closeLoaderModal = () => {
+    const modal = document.getElementById('modal-container');
+    if (modal) modal.style.display = 'none';
+};
+
 function showFrameShopModal() {
-    let purchased = [];
-    try {
-        const saved = localStorage.getItem('purchased_frames');
-        if (saved) purchased = JSON.parse(saved);
-    } catch (e) {}
-    
+    let purchased = userProfile.purchasedFrames || [];
     let activeFrame = userProfile.frame;
 
-    let listHtml = `<div class="shop-modal-container">
+    let listHtml = `<div class="shop-modal-container" style="color: var(--text-primary);">
         <p style="font-size: 0.82rem; color: var(--text-secondary); text-align: center; margin-bottom: 0.75rem; line-height: 1.4;">
-            Придбайте унікальні анімовані рамки для вашого аватара. Вони відображаються у вашому кабінеті, лобі та безпосередньо в ігровому HUD на ігровій дошці!
+            Придбайте унікальні анімовані рамки для вашого аватара за Моно-Коїни 🪙.
         </p>
+        
+        <!-- Premium Balance display -->
+        <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.04); padding: 0.6rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid var(--border-glass);">
+            <span style="font-size: 0.95rem; font-weight: 700;">Ваш баланс: <span class="text-yellow">🪙 ${userProfile.coins}</span></span>
+        </div>
+
         <div class="shop-card-list">
     `;
 
@@ -2273,22 +2346,22 @@ function showFrameShopModal() {
         
         let actionBtnHtml = '';
         if (isActive) {
-            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none;">Екіпіровано</button>`;
+            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Екіпіровано</button>`;
         } else if (isPurchased) {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
         } else {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff;" onclick="window.purchaseFrame('${item.id}')">Купити ₴${item.price}</button>`;
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="window.purchaseFrame('${item.id}')">Купити 🪙${item.price}</button>`;
         }
 
         listHtml += `
-            <div class="shop-card-item ${isActive ? 'active-frame' : ''}">
-                <div class="shop-card-left">
+            <div class="shop-card-item ${isActive ? 'active-frame' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; margin-bottom: 0.5rem; border: 1px solid var(--border-glass);">
+                <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
                     <div class="avatar-container ${item.class}" style="width: 46px; height: 46px; flex-shrink: 0;">
                         <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
                     </div>
-                    <div class="shop-frame-info">
-                        <span class="shop-frame-name">${item.name}</span>
-                        <span class="shop-frame-desc">${item.desc}</span>
+                    <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
+                        <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
+                        <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
                     </div>
                 </div>
                 <div>
@@ -2300,94 +2373,79 @@ function showFrameShopModal() {
 
     listHtml += `
         </div>
-        ${activeFrame ? `<button class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem; padding: 0.5rem;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : ''}
+        
+        <!-- Buy premium coins packages -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 0.75rem; margin-top: 1rem;">
+            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; text-align: center; color: var(--color-yellow);">Придбати Моно-Коїни за Stars ⭐️</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_100')">
+                    <span style="font-weight: 700;">🪙 100</span>
+                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 50</span>
+                </button>
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_250')">
+                    <span style="font-weight: 700;">🪙 250</span>
+                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 100</span>
+                </button>
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_600')">
+                    <span style="font-weight: 700;">🪙 600</span>
+                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 200</span>
+                </button>
+            </div>
+        </div>
+
+        ${activeFrame ? `<button class="btn btn-secondary" style="width: 100%; margin-top: 1rem; padding: 0.5rem; font-size: 0.8rem;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : ''}
     </div>`;
 
-    showModal("Крамниця анімованих рамок 👑", listHtml, [{ text: "Закрити", class: "btn-secondary" }]);
+    showModal("Крамниця оформлення 👑", listHtml, [{ text: "Закрити", class: "btn-secondary" }]);
+
+    if (tgId) {
+        ensureWsConnected(() => {
+            mp.socket.send(JSON.stringify({
+                type: "get_profile",
+                tg_id: tgId
+            }));
+        });
+    }
 }
+
+window.buyCoinsPack = (packId) => {
+    if (!tgId) {
+        alert("Помилка: купівля доступна тільки при грі через Telegram!");
+        return;
+    }
+    showModal("Завантаження ⏳", "<p>Створення платіжного посилання Stars...</p>", []);
+    ensureWsConnected(() => {
+        mp.socket.send(JSON.stringify({
+            type: "get_invoice",
+            package: packId,
+            tg_id: tgId
+        }));
+    });
+};
 
 window.equipFrame = (frameId) => {
     userProfile.frame = frameId;
     localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
     updateUserAvatarFrames();
-    showFrameShopModal(); // Redraw shop modal
-    syncProfileTab(); // Refresh profile tab
+    showFrameShopModal();
+    syncProfileTab();
 };
 
 window.purchaseFrame = (frameId) => {
     const frame = FRAME_ITEMS.find(f => f.id === frameId);
     if (!frame) return;
 
-    // Show simulated purchase options screen
-    showModal("Купівля оформлення 🛒", `
-        <div style="display: flex; flex-direction: column; gap: 1rem; color: var(--text-primary); text-align: center;">
-            <p>Купується рамка <strong>${frame.name}</strong> за <strong>₴${frame.price}</strong> (або ⭐️ ${frame.starsPrice} Stars).</p>
-            <div class="avatar-container ${frame.class}" style="width: 80px; height: 80px; margin: 0 auto;">
-                <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
-            </div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">
-                Це симуляція купівлі. Оберіть зручний для вас тестовий спосіб оплати. Реальні кошти списані не будуть!
-            </p>
-        </div>
-    `, [
-        {
-            text: "Тестовий платіж Stars ⭐️",
-            class: "btn-primary",
-            onClick: () => {
-                if (tg) {
-                    tg.showPopup({
-                        title: "Оплата Telegram Stars",
-                        message: `Підтверджуєте покупку ${frame.name} за ⭐️ ${frame.starsPrice} Stars?`,
-                        buttons: [
-                            { id: "yes", type: "default", text: "Оплатити" },
-                            { id: "no", type: "cancel", text: "Скасувати" }
-                        ]
-                    }, (buttonId) => {
-                        if (buttonId === "yes") {
-                            unlockFrame(frameId);
-                        } else {
-                            showFrameShopModal();
-                        }
-                    });
-                } else {
-                    unlockFrame(frameId);
-                }
-            }
-        },
-        {
-            text: "Тестовий платіж Mono ₴",
-            class: "btn-secondary",
-            onClick: () => {
-                unlockFrame(frameId);
-            }
-        },
-        { text: "Скасувати", class: "btn-secondary", onClick: showFrameShopModal }
-    ]);
-};
-
-function unlockFrame(frameId) {
-    let purchased = [];
-    try {
-        const saved = localStorage.getItem('purchased_frames');
-        if (saved) purchased = JSON.parse(saved);
-    } catch (e) {}
-    
-    if (!purchased.includes(frameId)) {
-        purchased.push(frameId);
-        localStorage.setItem('purchased_frames', JSON.stringify(purchased));
+    if (!tgId) {
+        alert("Помилка: купівля доступна тільки при запуску з Telegram!");
+        return;
     }
-    
-    // Auto equip
-    userProfile.frame = frameId;
-    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
-    
-    updateUserAvatarFrames();
-    triggerConfetti(); // Confetti on successful purchase!
-    
-    showModal("Успішна покупка! 🎉", `
-        <p>Ви придбали та одягли рамку. Інші гравці тепер бачитимуть її на вашому профілі!</p>
-    `, [{ text: "Клас!", class: "btn-primary", onClick: showFrameShopModal }]);
-    
-    syncProfileTab();
-}
+
+    ensureWsConnected(() => {
+        mp.socket.send(JSON.stringify({
+            type: "buy_frame",
+            frame_id: frameId,
+            tg_id: tgId
+        }));
+    });
+};
 

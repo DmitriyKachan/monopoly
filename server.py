@@ -145,7 +145,113 @@ async def handle_connection(websocket):
             data = json.loads(message)
             msg_type = data.get("type")
             
-            if msg_type == "create":
+            if msg_type == "get_profile":
+                tg_id = data.get("tg_id")
+                if tg_id:
+                    import bot
+                    db = bot.db_load()
+                    if "user_data" not in db:
+                        db["user_data"] = {}
+                    
+                    tg_id_str = str(tg_id)
+                    if tg_id_str not in db["user_data"]:
+                        db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
+                        bot.db_save(db)
+                    
+                    user_wallet = db["user_data"][tg_id_str]
+                    await websocket.send(json.dumps({
+                        "type": "profile_data",
+                        "coins": user_wallet.get("coins", 0),
+                        "purchased_frames": user_wallet.get("purchased_frames", [])
+                    }))
+                    
+            elif msg_type == "buy_frame":
+                tg_id = data.get("tg_id")
+                frame_id = data.get("frame_id")
+                
+                # Стоимость рамок
+                FRAME_PRICES = {
+                    "neon": 100,
+                    "gold": 250,
+                    "rainbow": 500
+                }
+                
+                if tg_id and frame_id in FRAME_PRICES:
+                    import bot
+                    price = FRAME_PRICES[frame_id]
+                    db = bot.db_load()
+                    if "user_data" not in db:
+                        db["user_data"] = {}
+                    
+                    tg_id_str = str(tg_id)
+                    if tg_id_str not in db["user_data"]:
+                        db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
+                    
+                    user_data = db["user_data"][tg_id_str]
+                    current_coins = user_data.get("coins", 0)
+                    purchased = user_data.get("purchased_frames", [])
+                    
+                    if frame_id in purchased:
+                        # Рамка уже куплена, просто возвращаем успех
+                        await websocket.send(json.dumps({
+                            "type": "buy_frame_success",
+                            "frame_id": frame_id,
+                            "coins": current_coins
+                        }))
+                    elif current_coins >= price:
+                        # Списываем монеты и добавляем рамку
+                        user_data["coins"] = current_coins - price
+                        if frame_id not in purchased:
+                            purchased.append(frame_id)
+                        user_data["purchased_frames"] = purchased
+                        
+                        db["user_data"][tg_id_str] = user_data
+                        bot.db_save(db)
+                        
+                        await websocket.send(json.dumps({
+                            "type": "buy_frame_success",
+                            "frame_id": frame_id,
+                            "coins": user_data["coins"]
+                        }))
+                        print(f"Игрок {tg_id_str} успешно купил рамку {frame_id} за {price} коинов.")
+                    else:
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": f"Недостатньо Моно-Коїнів! Потрібно: 🪙{price}, у вас: 🪙{current_coins}"
+                        }))
+                        
+            elif msg_type == "get_invoice":
+                tg_id = data.get("tg_id")
+                package = data.get("package")
+                
+                # Стоимость пакетов
+                PACK_VALUES = {
+                    "pack_100": {"title": "100 Моно-Коїнів 🪙", "amount": 50, "coins": 100},
+                    "pack_250": {"title": "250 Моно-Коїнів 🪙", "amount": 100, "coins": 250},
+                    "pack_600": {"title": "600 Моно-Коїнів 🪙", "amount": 200, "coins": 600}
+                }
+                
+                if tg_id and package in PACK_VALUES:
+                    import bot
+                    pack = PACK_VALUES[package]
+                    token = bot.load_config().get("telegram_token")
+                    
+                    payload = f"{package}_{tg_id}"
+                    desc = f"Пакет монет для придбання унікальних анімованих рамок профілю в грі Монополія Україна."
+                    
+                    invoice_link = bot.create_invoice_link(token, pack["title"], desc, payload, pack["amount"])
+                    if invoice_link:
+                        await websocket.send(json.dumps({
+                            "type": "invoice_link",
+                            "url": invoice_link
+                        }))
+                    else:
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": "Не вдалося згенерувати посилання на оплату. Спробуйте пізніше."
+                        }))
+
+            elif msg_type == "create":
                 # Create a new room
                 room_code = str(random.randint(1000, 9999))
                 while room_code in ROOMS:

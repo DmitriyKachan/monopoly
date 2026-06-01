@@ -21,7 +21,7 @@ def db_load():
             return json.loads(response.read().decode('utf-8'))
     except Exception as e:
         print(f"Помилка завантаження БД з хмари: {e}")
-        return {"telegram_chat_id": None, "users": []}
+        return {"telegram_chat_id": None, "users": [], "user_data": {}}
 
 def db_save(data):
     req = urllib.request.Request(
@@ -42,10 +42,33 @@ def save_user(chat_id):
     db = db_load()
     if "users" not in db:
         db["users"] = []
+    if "user_data" not in db:
+        db["user_data"] = {}
+    
+    chat_id_str = str(chat_id)
+    if chat_id_str not in db["user_data"]:
+        db["user_data"][chat_id_str] = {"coins": 0, "purchased_frames": []}
+        
     if chat_id not in db["users"]:
         db["users"].append(chat_id)
-        db_save(db)
-        print(f"Користувач {chat_id} збережений в БД.")
+    db_save(db)
+    print(f"Користувач {chat_id} збережений в БД.")
+
+def create_invoice_link(token, title, description, payload, amount):
+    params = {
+        "title": title,
+        "description": description,
+        "payload": payload,
+        "provider_token": "", # Пусто для Telegram Stars
+        "currency": "XTR",    # Валюта Telegram Stars
+        "prices": [{"label": "Stars", "amount": amount}]
+    }
+    res = api_request(token, "createInvoiceLink", params)
+    if res and res.get("ok"):
+        return res["result"]
+    else:
+        print(f"Помилка створення інвойсу: {res}")
+        return None
 
 def load_config():
     # Проверяем переменные окружения (для безопасного запуска на хостинге)
@@ -212,6 +235,14 @@ def main():
                 for update in updates["result"]:
                     offset = update["update_id"] + 1
                     
+                    # Обработка предзаказа (pre_checkout_query)
+                    if "pre_checkout_query" in update:
+                        pq = update["pre_checkout_query"]
+                        pq_id = pq["id"]
+                        api_request(token, "answerPreCheckoutQuery", {"pre_checkout_query_id": pq_id, "ok": True})
+                        print(f"Дано відповідь на предзаказ {pq_id}")
+                        continue
+                    
                     msg = None
                     if "message" in update:
                         msg = update["message"]
@@ -219,6 +250,46 @@ def main():
                         msg = update["channel_post"]
                         
                     if msg:
+                        # Проверяем успешный платеж
+                        if "successful_payment" in msg:
+                            sp = msg["successful_payment"]
+                            payload = sp.get("invoice_payload", "")
+                            if payload.startswith("pack_"):
+                                try:
+                                    parts = payload.split("_")
+                                    pack_type = parts[0] + "_" + parts[1] # "pack_100"
+                                    pay_user_id = parts[2] # "USERID"
+                                    
+                                    coins_to_add = 0
+                                    if "pack_100" in pack_type:
+                                        coins_to_add = 100
+                                    elif "pack_250" in pack_type:
+                                        coins_to_add = 250
+                                    elif "pack_600" in pack_type:
+                                        coins_to_add = 600
+                                        
+                                    if coins_to_add > 0:
+                                        db = db_load()
+                                        if "user_data" not in db:
+                                            db["user_data"] = {}
+                                        
+                                        u_id_str = str(pay_user_id)
+                                        if u_id_str not in db["user_data"]:
+                                            db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
+                                        
+                                        db["user_data"][u_id_str]["coins"] += coins_to_add
+                                        db_save(db)
+                                        
+                                        api_request(token, "sendMessage", {
+                                            "chat_id": pay_user_id,
+                                            "text": f"✅ *Оплата успішна!*\n\nНа ваш баланс зараховано *{coins_to_add}* Моно-Коїнів 🪙. Дякуємо за підтримку гри!",
+                                            "parse_mode": "Markdown"
+                                        })
+                                        print(f"Успішне нарахування {coins_to_add} коїнів користувачу {pay_user_id}")
+                                except Exception as e:
+                                    print(f"Помилка обробки платежу {payload}: {e}")
+                            continue
+
                         chat_id = msg["chat"]["id"]
                         user = msg.get("from", {}) if msg.get("from") else None
                         first_name = user.get("first_name", "Гість") if user else "Канал"
@@ -232,7 +303,7 @@ def main():
                             save_user(chat_id)
                             # Видаляємо будь-які повідомлення користувача в ЛС, крім команд запуску та розсилки,
                             # щоб чат залишався візуально "тільки для читання", як новинний канал!
-                            if text != "/start" and not text.startswith("/broadcast_changelog") and not text.startswith("/post_changelog") and text != "":
+                            if not text.startswith("/start") and not text.startswith("/broadcast_changelog") and not text.startswith("/post_changelog") and text != "":
                                 try:
                                     api_request(token, "deleteMessage", {"chat_id": chat_id, "message_id": msg["message_id"]})
                                 except Exception as e:
@@ -266,6 +337,21 @@ def main():
                                 # Добавляем код комнаты в ссылку запуска
                                 if room_code and len(room_code) == 4:
                                     dynamic_web_app_url = f"{dynamic_web_app_url}&tgWebAppStartParam={room_code}"
+                                    
+                                # Дописываем монеты и купленные рамки в ссылку WebApp!
+                                db = db_load()
+                                u_id_str = str(chat_id)
+                                if "user_data" not in db:
+                                    db["user_data"] = {}
+                                if u_id_str not in db["user_data"]:
+                                    db["user_data"][u_id_str] = {"coins": 0, "purchased_frames": []}
+                                    db_save(db)
+                                
+                                user_wallet = db["user_data"][u_id_str]
+                                wallet_coins = user_wallet.get("coins", 0)
+                                wallet_frames = ",".join(user_wallet.get("purchased_frames", []))
+                                
+                                dynamic_web_app_url = f"{dynamic_web_app_url}&tg_id={chat_id}&coins={wallet_coins}&purchased_frames={wallet_frames}"
                             except Exception as e:
                                 print(f"Помилка при читанні конфігурації: {e}")
                                 dynamic_web_app_url = f"{web_app_url}&t={int(time.time())}" if "?" in web_app_url else f"{web_app_url}?t={int(time.time())}"
