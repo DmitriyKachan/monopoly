@@ -15,7 +15,7 @@
     <!-- AdsGram SDK for Rewarded Video Ads -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
     <div id="app">
@@ -73,28 +73,28 @@
                         <img id="profile-avatar-lg" class="profile-avatar-large" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" alt="Avatar">
                         <div class="profile-details">
                             <h3 id="profile-name-lg">Гість</h3>
-                            <span id="profile-username-lg" class="profile-username">@guest</span>
-                            <div>
-                                <span class="profile-badge">Олігарх 💼</span>
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 0.5rem;">
+                                <span id="profile-rank-badge" class="profile-badge" style="margin-top: 0;">Початківець 👤</span>
+                                <span id="btn-show-ranks" style="font-size: 0.75rem; color: var(--color-primary); cursor: pointer; text-decoration: underline; font-weight: 600;">Звання ℹ️</span>
                             </div>
                         </div>
                         
                         <div class="stats-grid">
                             <div class="stat-item">
                                 <span class="stat-label">Зіграно ігор</span>
-                                <span class="stat-value">12</span>
+                                <span id="profile-stat-games" class="stat-value">0</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-label">Перемоги</span>
-                                <span class="stat-value">7</span>
+                                <span id="profile-stat-wins" class="stat-value">0</span>
                             </div>
                             <div class="stat-item">
                                 <span class="stat-label">Відсоток перемог</span>
-                                <span class="stat-value">58%</span>
+                                <span id="profile-stat-winrate" class="stat-value">0%</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-label">Рейтинг</span>
-                                <span class="stat-value">#1,420</span>
+                                <span class="stat-label">Глобальний рейтинг</span>
+                                <span id="profile-stat-rating" class="stat-value">--</span>
                             </div>
                         </div>
 
@@ -115,11 +115,21 @@
 
                     <div class="ad-info-box">
                         <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--text-primary);">Стартовий капітал 💰</h4>
-                        <p>Подивіться рекламу, чтобы отримати бонусні <strong>+1,500,000 ₴</strong> до стартового капіталу у вашій наступній грі!</p>
+                        <p>Подивіться рекламу, щоб отримати бонусні <strong>+1,500,000 ₴</strong> до стартового капіталу у вашій наступній грі!</p>
                         <button class="btn btn-secondary" id="btn-watch-ad" style="background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); border: none; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3); color: #ffffff;">
                             <span class="btn-icon"><i class="fa-solid fa-video"></i></span>
                             <span class="btn-text">Бонус за рекламу 📺 (+1.5M ₴)</span>
                         </button>
+                    </div>
+
+                    <div class="leaderboard-box" style="margin-top: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); border-radius: 18px; padding: 1.25rem; text-align: left; width: 100%;">
+                        <h4 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem; display: flex; justify-content: space-between; font-size: 0.95rem;">
+                            <span>Рейтинг гравців 🏆</span>
+                            <span id="leaderboard-my-rank" style="font-size: 0.8rem; color: var(--color-yellow); font-weight: 600;">Ваше місце: --</span>
+                        </h4>
+                        <div id="leaderboard-list" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding-right: 0.2rem;">
+                            <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">Завантаження рейтингу...</p>
+                        </div>
                     </div>
                 </div>
 
@@ -141,13 +151,6 @@
                             <span class="btn-icon"><i class="fa-solid fa-mug-hot"></i></span>
                             <span class="btn-text">Підтримати розробника ☕️</span>
                         </button>
-                    </div>
-
-                    <div class="social-links">
-                        <a href="https://t.me/queuecomfybot" target="_blank" class="social-btn" style="width: 100%;">
-                            <i class="fa-brands fa-telegram"></i>
-                            <span>Наш Telegram-канал</span>
-                        </a>
                     </div>
                 </div>
             </div>
@@ -290,6 +293,6 @@
     </div>
 
     <!-- Application Script modules -->
-    <script type="module" src="app.js?v=15"></script>
+    <script type="module" src="app.js?v=16"></script>
 </body>
 </html>

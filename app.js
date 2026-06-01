@@ -27,7 +27,7 @@ mp.onPlayerLeftCallback = (name) => {
     }
 };
 
-let userProfile = { name: "Гість", username: "guest", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&auto=format&fit=crop" };
+let userProfile = { name: "Гість", username: "guest", avatar: "assets/cossack_tycoon.png", stats: { games: 0, wins: 0 } };
 
 // Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
 const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
@@ -80,6 +80,7 @@ if (savedProfile) {
         userProfile.name = parsed.name || userProfile.name;
         userProfile.username = parsed.username || userProfile.username;
         userProfile.avatar = parsed.avatar || userProfile.avatar;
+        userProfile.stats = parsed.stats || { games: 0, wins: 0 };
     } catch (e) {
         console.error("Error parsing saved profile", e);
     }
@@ -598,7 +599,7 @@ function handlePlayerClick(clickedPlayerId) {
     const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY));
 
     let contentHtml = `
-        <div class="trade-modal" style="display: flex; flex-direction: column; gap: 1rem; color: #fff;">
+        <div class="trade-modal" style="display: flex; flex-direction: column; gap: 1rem; color: var(--text-primary);">
             <p style="text-align: center; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
                 Пропозиція торгової угоди для <strong>${receiver.name}</strong>
             </p>
@@ -610,7 +611,7 @@ function handlePlayerClick(clickedPlayerId) {
                     <div>
                         <label style="font-size: 0.8rem; color: var(--text-secondary);">Доплата (₴):</label>
                         <input type="number" id="trade-offer-cash" min="0" max="${proposer.money}" value="0" 
-                            style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
+                            style="width: 100%; background: var(--bg-card-solid); color: var(--text-primary); border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
                     </div>
                     
                     <span style="font-size: 0.8rem; color: var(--text-secondary);">Ваші компанії:</span>
@@ -623,7 +624,7 @@ function handlePlayerClick(clickedPlayerId) {
         proposerProps.forEach(p => {
             const branchText = p.branches > 0 ? ` (${p.branches} ф.)` : '';
             contentHtml += `
-                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                <label class="trade-item-label">
                     <input type="checkbox" class="trade-offer-prop" value="${p.id}" style="accent-color: var(--color-primary);">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
                     ${p.name}${branchText}
@@ -643,7 +644,7 @@ function handlePlayerClick(clickedPlayerId) {
                     <div>
                         <label style="font-size: 0.8rem; color: var(--text-secondary);">Гроші від гравця (₴):</label>
                         <input type="number" id="trade-request-cash" min="0" max="${receiver.money}" value="0" 
-                            style="width: 100%; background: var(--bg-card-solid); color: #fff; border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
+                            style="width: 100%; background: var(--bg-card-solid); color: var(--text-primary); border: 1px solid var(--border-glass); padding: 0.4rem; border-radius: 4px; font-weight: bold; font-family: inherit;">
                     </div>
                     
                     <span style="font-size: 0.8rem; color: var(--text-secondary);">Активи гравця:</span>
@@ -656,7 +657,7 @@ function handlePlayerClick(clickedPlayerId) {
         receiverProps.forEach(p => {
             const branchText = p.branches > 0 ? ` (${p.branches} ф.)` : '';
             contentHtml += `
-                <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; background: rgba(255,255,255,0.03); border-radius: 4px; cursor: pointer; font-size: 0.85rem;">
+                <label class="trade-item-label">
                     <input type="checkbox" class="trade-request-prop" value="${p.id}" style="accent-color: var(--color-primary);">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--prop-${p.group || 'special'}); display: inline-block;"></span>
                     ${p.name}${branchText}
@@ -1030,7 +1031,7 @@ function resolveUserDebt(playerId, rentAmount) {
                     updateGameLog(game);
                     
                     if (game.isGameOver) {
-                        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+                        triggerGameOver(game.rankings);
                     } else {
                         endTurnBtn.disabled = false;
                     }
@@ -1075,7 +1076,7 @@ function handleUserEndTurn() {
     document.getElementById('btn-end-turn').disabled = true;
 
     if (game.isGameOver) {
-        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        triggerGameOver(game.rankings);
         return;
     }
 
@@ -1088,7 +1089,7 @@ function handleUserEndTurn() {
     updateGameLog(game);
 
     if (game.isGameOver) {
-        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        triggerGameOver(game.rankings);
         return;
     }
 
@@ -1260,7 +1261,7 @@ function executeBotUpgradesAndEnd() {
 
 function executeBotEndTurn() {
     if (game.isGameOver) {
-        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        triggerGameOver(game.rankings);
         return;
     }
 
@@ -1269,7 +1270,7 @@ function executeBotEndTurn() {
     updateGameLog(game);
 
     if (game.isGameOver) {
-        showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+        triggerGameOver(game.rankings);
         return;
     }
 
@@ -1552,12 +1553,157 @@ function handleRemoteAction(action) {
             renderPlayersHUD(game);
             updateGameLog(game);
             if (game.isGameOver) {
-                showGameOverModal(game.rankings, () => switchScreen('screen-menu'));
+                triggerGameOver(game.rankings);
             } else {
                 processNextTurn();
             }
             break;
     }
+}
+
+// ==========================================================================
+// GAME OVER & STATS TRACKING HANDLERS
+// ==========================================================================
+
+const RANKS = [
+    { name: "Початківець 👤", minWins: 0 },
+    { name: "ФОП 💼", minWins: 2 },
+    { name: "Стартапер 🚀", minWins: 5 },
+    { name: "Бізнесмен 🏢", minWins: 10 },
+    { name: "Олігарх 👑", minWins: 20 },
+    { name: "Інвестор 📈", minWins: 40 }
+];
+
+function getUserRank(wins) {
+    let currentRank = RANKS[0].name;
+    for (const rank of RANKS) {
+        if (wins >= rank.minWins) {
+            currentRank = rank.name;
+        }
+    }
+    return currentRank;
+}
+
+function showRanksInfoModal() {
+    const modalHtml = `
+        <div class="rank-list-modal">
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-align: center;">
+                Звання даються за досягнення певної кількості перемог в іграх:
+            </p>
+            ${RANKS.map(rank => `
+                <div class="rank-list-item">
+                    <span class="rank-list-name">${rank.name}</span>
+                    <span class="rank-list-criteria">${rank.minWins === 0 ? 'Стартове звання' : `від ${rank.minWins} перемог`}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    showModal("Система звань 🏆", modalHtml, [
+        { text: "Зрозуміло", class: "btn-primary" }
+    ]);
+}
+
+function recordGameResult(rankings) {
+    if (!rankings || rankings.length === 0) return;
+    
+    userProfile.stats = userProfile.stats || { games: 0, wins: 0 };
+    userProfile.stats.games++;
+    
+    // Check if the user is the winner
+    const winner = rankings[0];
+    if (winner && winner.name === userProfile.name) {
+        userProfile.stats.wins++;
+    }
+    
+    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+    
+    // Sync UI with updated stats
+    syncProfileTab();
+}
+
+function triggerGameOver(rankings) {
+    recordGameResult(rankings);
+    showGameOverModal(rankings, () => switchScreen('screen-menu'));
+}
+
+// ==========================================================================
+// GLOBAL LEADERBOARD WSS SYNC
+// ==========================================================================
+
+function fetchGlobalLeaderboard() {
+    const wsUrl = getWsUrl();
+    const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+        ws.send(JSON.stringify({
+            type: "sync_stats",
+            name: userProfile.name,
+            avatar: userProfile.avatar,
+            wins: userProfile.stats?.wins || 0,
+            games: userProfile.stats?.games || 0
+        }));
+    };
+    
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === "leaderboard") {
+                renderLeaderboardList(data.top50, data.your_rank);
+                ws.close();
+            }
+        } catch (e) {
+            console.error("Error parsing leaderboard message", e);
+        }
+    };
+    
+    ws.onerror = (e) => {
+        console.error("Leaderboard WebSocket connection error", e);
+        const listEl = document.getElementById('leaderboard-list');
+        if (listEl) {
+            listEl.innerHTML = `<p style="text-align: center; color: var(--color-danger); font-size: 0.85rem; padding: 1rem 0;">Помилка підключення до сервера</p>`;
+        }
+    };
+}
+
+function renderLeaderboardList(top50, yourRank) {
+    const ratingStat = document.getElementById('profile-stat-rating');
+    if (ratingStat) ratingStat.innerText = yourRank > 0 ? `#${yourRank}` : '--';
+    
+    const myRankEl = document.getElementById('leaderboard-my-rank');
+    if (myRankEl) myRankEl.innerText = yourRank > 0 ? `Ваше місце: #${yourRank}` : 'Ваше місце: --';
+    
+    const listEl = document.getElementById('leaderboard-list');
+    if (!listEl) return;
+    
+    if (top50.length === 0) {
+        listEl.innerHTML = `<p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">Рейтинг порожній</p>`;
+        return;
+    }
+    
+    listEl.innerHTML = '';
+    top50.forEach((player, idx) => {
+        const rank = idx + 1;
+        const isMe = player.name === userProfile.name;
+        
+        let rankClass = '';
+        if (rank === 1) rankClass = 'rank-1';
+        else if (rank === 2) rankClass = 'rank-2';
+        else if (rank === 3) rankClass = 'rank-3';
+        
+        const row = document.createElement('div');
+        row.className = `leaderboard-row ${isMe ? 'my-row' : ''}`;
+        row.innerHTML = `
+            <div class="leaderboard-player-info">
+                <span class="leaderboard-rank ${rankClass}">${rank}</span>
+                <img src="${player.avatar || 'assets/cossack_tycoon.png'}" class="leaderboard-avatar" onerror="this.src='assets/cossack_tycoon.png'">
+                <span class="leaderboard-name">${player.name}</span>
+            </div>
+            <div class="leaderboard-stats">
+                <span class="leaderboard-wins">${player.wins} 🏆</span> / ${player.games} ігор
+            </div>
+        `;
+        listEl.appendChild(row);
+    });
 }
 
 // ==========================================================================
@@ -1594,8 +1740,22 @@ function syncProfileTab() {
     const nameLg = document.getElementById('profile-name-lg');
     if (nameLg) nameLg.innerText = userProfile.name;
     
-    const usernameLg = document.getElementById('profile-username-lg');
-    if (usernameLg) usernameLg.innerText = '@' + userProfile.username;
+    const wins = userProfile.stats?.wins || 0;
+    const games = userProfile.stats?.games || 0;
+    
+    const rankBadge = document.getElementById('profile-rank-badge');
+    if (rankBadge) rankBadge.innerText = getUserRank(wins);
+    
+    const statGames = document.getElementById('profile-stat-games');
+    if (statGames) statGames.innerText = games;
+    
+    const statWins = document.getElementById('profile-stat-wins');
+    if (statWins) statWins.innerText = wins;
+    
+    const statWinrate = document.getElementById('profile-stat-winrate');
+    if (statWinrate) statWinrate.innerText = games > 0 ? Math.round((wins / games) * 100) + '%' : '0%';
+    
+    fetchGlobalLeaderboard();
 }
 
 function initTheme() {
@@ -1628,43 +1788,50 @@ function initTheme() {
 }
 
 const PRESET_AVATARS = [
-    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120",
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120",
-    "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120",
-    "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=120"
+    "assets/cossack_tycoon.png",
+    "assets/lviv_barista.png",
+    "assets/kyiv_it.png",
+    "assets/odesa_trader.png",
+    "assets/wheat_baron.png"
 ];
 
 function setupProfileCustomization() {
     const editBtn = document.getElementById('btn-edit-profile');
     if (!editBtn) return;
     
+    // Register the ranks modal click on the badge/info button if it exists
+    const btnShowRanks = document.getElementById('btn-show-ranks');
+    if (btnShowRanks) {
+        btnShowRanks.onclick = showRanksInfoModal;
+    }
+    
     editBtn.addEventListener('click', () => {
-        let selectedAvatar = userProfile.avatar;
+        let tempAvatar = userProfile.avatar;
         
         let modalHtml = `
             <div style="display: flex; flex-direction: column; gap: 1rem; color: var(--text-primary);">
                 <div>
                     <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Ім'я відображення:</label>
                     <input type="text" id="edit-profile-name" value="${userProfile.name}" placeholder="Ваше ім'я"
-                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
+                        style="width: 100%; background: rgba(255,255,255,0.05); color: var(--text-primary); border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
                 </div>
                 
                 <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Юзернейм:</label>
-                    <input type="text" id="edit-profile-username" value="${userProfile.username}" placeholder="username"
-                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
-                </div>
-                
-                <div>
-                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Посилання на аватар:</label>
-                    <input type="text" id="edit-profile-avatar-url" value="${userProfile.avatar}" placeholder="https://..."
-                        style="width: 100%; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid var(--border-glass); padding: 0.6rem; border-radius: 8px; font-family: inherit;">
-                    <span class="avatar-presets-label">Або оберіть готовий аватар:</span>
+                    <label style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.4rem;">Аватар:</label>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <img id="edit-profile-avatar-preview" src="${tempAvatar}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid var(--color-primary);" onerror="this.src='assets/cossack_tycoon.png'">
+                        <button class="btn btn-secondary" id="btn-upload-avatar" style="padding: 0.5rem 1rem; font-size: 0.85rem; width: auto; font-family: inherit;">
+                            Завантажити фото 📸
+                        </button>
+                        <input type="file" id="edit-profile-file" accept="image/*" style="display: none;">
+                    </div>
+                    
+                    <span class="avatar-presets-label" style="display: block; margin-top: 0.75rem;">Або оберіть готового персонажа:</span>
                     <div class="avatar-preset-grid">
-                        ${PRESET_AVATARS.map(url => `
-                            <img class="avatar-preset-item ${url === userProfile.avatar ? 'selected' : ''}" src="${url}" data-url="${url}">
-                        `).join('')}
+                        ${PRESET_AVATARS.map(url => {
+                            const isSelected = url === tempAvatar;
+                            return `<img class="avatar-preset-item ${isSelected ? 'selected' : ''}" src="${url}" data-url="${url}">`;
+                        }).join('')}
                     </div>
                 </div>
             </div>
@@ -1676,25 +1843,23 @@ function setupProfileCustomization() {
                 class: "btn-primary",
                 onClick: () => {
                     const newName = document.getElementById('edit-profile-name').value.trim();
-                    const newUsername = document.getElementById('edit-profile-username').value.trim();
-                    const newAvatar = document.getElementById('edit-profile-avatar-url').value.trim();
-                    
                     if (!newName) {
-                        alert("Ім'я не може быть порожнім!");
+                        alert("Ім'я не може бути порожнім!");
                         return;
                     }
                     
                     userProfile.name = newName;
-                    userProfile.username = newUsername || "player";
-                    userProfile.avatar = newAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80";
+                    userProfile.avatar = tempAvatar;
                     
                     localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
                     
                     // Update header HUD UI
-                    document.getElementById('user-name').innerText = userProfile.name;
-                    document.getElementById('user-avatar').src = userProfile.avatar;
+                    const userNameEl = document.getElementById('user-name');
+                    if (userNameEl) userNameEl.innerText = userProfile.name;
+                    const userAvatarEl = document.getElementById('user-avatar');
+                    if (userAvatarEl) userAvatarEl.src = userProfile.avatar;
                     
-                    // Update cabinet UI
+                    // Update cabinet UI and sync with server
                     syncProfileTab();
                     hideModal();
                 }
@@ -1712,9 +1877,53 @@ function setupProfileCustomization() {
                 presetItems.forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
                 const clickedUrl = item.getAttribute('data-url');
-                document.getElementById('edit-profile-avatar-url').value = clickedUrl;
+                tempAvatar = clickedUrl;
+                document.getElementById('edit-profile-avatar-preview').src = tempAvatar;
             });
         });
+        
+        // File Upload handlers
+        const fileInput = document.getElementById('edit-profile-file');
+        const uploadBtn = document.getElementById('btn-upload-avatar');
+        
+        if (uploadBtn && fileInput) {
+            uploadBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Compress via HTML5 canvas to 120x120px JPEG (0.85 quality)
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 120;
+                        canvas.height = 120;
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Crop square and center
+                        const minDim = Math.min(img.width, img.height);
+                        const sx = (img.width - minDim) / 2;
+                        const sy = (img.height - minDim) / 2;
+                        
+                        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, 120, 120);
+                        
+                        const base64Str = canvas.toDataURL('image/jpeg', 0.85);
+                        tempAvatar = base64Str;
+                        document.getElementById('edit-profile-avatar-preview').src = base64Str;
+                        
+                        // Select nothing in presets
+                        presetItems.forEach(i => i.classList.remove('selected'));
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
     });
 }
 

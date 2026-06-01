@@ -7,9 +7,36 @@ import json
 import random
 import websockets
 
+import os
+
 # Store active game rooms
 # Format: { room_code: { "clients": set(), "players": [ { "id": idx, "name": name, "avatar": avatar, "socket": ws } ] } }
 ROOMS = {}
+
+LEADERBOARD_FILE = "leaderboard.json"
+LEADERBOARD = {}
+
+def load_leaderboard():
+    global LEADERBOARD
+    if os.path.exists(LEADERBOARD_FILE):
+        try:
+            with open(LEADERBOARD_FILE, "r", encoding="utf-8") as f:
+                LEADERBOARD = json.load(f)
+            print(f"Завантажено {len(LEADERBOARD)} гравців у лідерборд")
+        except Exception as e:
+            print(f"Помилка завантаження лідерборду: {e}")
+            LEADERBOARD = {}
+    else:
+        LEADERBOARD = {}
+
+def save_leaderboard():
+    try:
+        with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
+            json.dump(LEADERBOARD, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"Помилка збереження лідерборду: {e}")
+
+load_leaderboard()
 
 async def broadcast_to_room(room_code, message, exclude_ws=None):
     if room_code not in ROOMS:
@@ -124,6 +151,53 @@ async def handle_connection(websocket):
                         "type": "sync_action",
                         "payload": action_payload
                     }, exclude_ws=websocket)
+                    
+            elif msg_type == "sync_stats":
+                # Register player stats and send back top 50 leaderboard
+                name = data.get("name", "Гість")
+                avatar = data.get("avatar", "")
+                wins = int(data.get("wins", 0))
+                games = int(data.get("games", 0))
+                
+                # Filter/replace large base64 avatar strings to save storage space
+                if avatar.startswith("data:image"):
+                    avatar = "assets/cossack_tycoon.png"
+                
+                LEADERBOARD[name] = {
+                    "name": name,
+                    "avatar": avatar,
+                    "wins": wins,
+                    "games": games
+                }
+                save_leaderboard()
+                
+                # Sort players: first by wins (descending), then by games played (descending)
+                sorted_board = sorted(
+                    LEADERBOARD.values(),
+                    key=lambda x: (x.get("wins", 0), x.get("games", 0)),
+                    reverse=True
+                )
+                
+                # Find rank of current player
+                your_rank = -1
+                for idx, player in enumerate(sorted_board):
+                    if player["name"] == name:
+                        your_rank = idx + 1
+                        break
+                
+                # Retrieve Top 50
+                top50 = sorted_board[:50]
+                
+                await websocket.send(json.dumps({
+                    "type": "leaderboard",
+                    "top50": [{
+                        "name": p["name"],
+                        "avatar": p["avatar"],
+                        "wins": p["wins"],
+                        "games": p["games"]
+                    } for p in top50],
+                    "your_rank": your_rank
+                }))
                     
     except websockets.exceptions.ConnectionClosed:
         pass

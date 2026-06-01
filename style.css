@@ -2246,3 +2246,178 @@ input:checked + .slider:before {
     color: var(--color-primary);
 }
 
+/* Leaderboard row and styles */
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.leaderboard-row.my-row {
+    border-color: var(--color-yellow) !important;
+    background: rgba(255, 215, 0, 0.04) !important;
+}
+
+.leaderboard-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.leaderboard-rank {
+    font-weight: 800;
+    width: 20px;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.leaderboard-rank.rank-1 { color: #f59e0b; }
+.leaderboard-rank.rank-2 { color: #cbd5e1; }
+.leaderboard-rank.rank-3 { color: #b45309; }
+
+.leaderboard-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--border-glass);
+}
+
+.leaderboard-name {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.light-theme .leaderboard-name {
+    color: var(--text-primary);
+}
+
+.leaderboard-stats {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.leaderboard-wins {
+    font-weight: 700;
+    color: var(--color-success);
+}
+
+/* Modal styling for ranks list */
+.rank-list-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    color: var(--text-primary);
+}
+
+.rank-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+}
+
+.light-theme .rank-list-item {
+    background: hsl(220, 10%, 97%);
+    border: 1px solid var(--border-glass);
+}
+
+.rank-list-name {
+    font-weight: 700;
+}
+
+.rank-list-criteria {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Premium Light Theme Readability Enhancements */
+.light-theme .leaderboard-box {
+    background: var(--bg-card-solid) !important;
+    border: 1px solid var(--border-glass) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
+}
+
+.light-theme .leaderboard-row {
+    background: hsl(220, 10%, 97%) !important;
+    border: 1px solid var(--border-glass) !important;
+}
+
+.light-theme .leaderboard-row.my-row {
+    background: rgba(255, 215, 0, 0.12) !important;
+    border-color: #d97706 !important;
+}
+
+.light-theme .leaderboard-rank {
+    color: var(--text-secondary);
+}
+
+.light-theme .leaderboard-rank.rank-1 {
+    color: #d97706 !important;
+}
+
+.light-theme .leaderboard-rank.rank-2 {
+    color: #475569 !important;
+}
+
+.light-theme .leaderboard-rank.rank-3 {
+    color: #b45309 !important;
+}
+
+/* Trade Modal Item Labels */
+.trade-item-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.trade-item-label:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.light-theme .trade-item-label {
+    background: hsl(220, 10%, 97%) !important;
+    border: 1px solid var(--border-glass) !important;
+    color: var(--text-primary);
+}
+
+.light-theme .trade-item-label:hover {
+    background: hsl(220, 10%, 92%) !important;
+}
+
+/* Strict text and inputs contrast inside light theme modals */
+.light-theme .modal-container,
+.light-theme .modal-body,
+.light-theme .modal-body label,
+.light-theme .modal-body p,
+.light-theme .modal-body span {
+    color: var(--text-primary);
+}
+
+.light-theme .modal-body input,
+.light-theme .modal-body select,
+.light-theme .modal-body textarea {
+    background: hsl(220, 10%, 97%) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-glass) !important;
+}
+
+
+
