@@ -40,7 +40,7 @@ export const SPACES_DATA = [
         price: 600,
         rent: [50, 200, 500, 1000, 2000],
         branchCost: 500,
-        logoSvg: "assets/logos/atb.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#e4002b"/><path d="M26,72 L38,28 H50 L62,72 H52 L49,60 H39 L36,72 Z M41,52 H47 L44,38 Z" fill="#fff" font-weight="900"/><path d="M64,28 H80 L74,72 H62 L64,28 Z" fill="#fccd04" opacity=".9"/></svg>`
     },
     {
         id: 2,
@@ -50,7 +50,7 @@ export const SPACES_DATA = [
         price: 600,
         rent: [50, 200, 500, 1000, 2000],
         branchCost: 500,
-        logoSvg: "assets/logos/silpo.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#f97316"/><path d="M34,38 C34,30 42,26 50,26 C58,26 64,30 64,38 C64,44 58,48 52,50 C48,51 46,54 46,58 M46,64 A3,3 0 1,0 46,70" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/></svg>`
     },
     {
         id: 3,
@@ -63,7 +63,7 @@ export const SPACES_DATA = [
         type: SPACE_TYPES.STATION,
         price: 2000,
         baseRent: 500,
-        logoSvg: "assets/logos/ukrzaliznytsia.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#1a237e"/><path d="M28,70 L42,30 L50,55 L58,30 L72,70" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/><line x1="30" y1="56" x2="70" y2="56" stroke="#ffd600" stroke-width="5" stroke-linecap="round"/></svg>`
     },
     {
         id: 5,
@@ -79,7 +79,7 @@ export const SPACES_DATA = [
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
         branchCost: 700,
-        logoSvg: "assets/logos/rozetka.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#00a046"/><circle cx="50" cy="48" r="28" fill="#fff"/><circle cx="40" cy="43" r="4" fill="#00a046"/><circle cx="60" cy="43" r="4" fill="#00a046"/><path d="M36,54 Q50,70 64,54" fill="none" stroke="#00a046" stroke-width="5.5" stroke-linecap="round"/></svg>`
     },
     {
         id: 7,
@@ -89,7 +89,7 @@ export const SPACES_DATA = [
         price: 1000,
         rent: [80, 320, 800, 1600, 3000],
         branchCost: 700,
-        logoSvg: "assets/logos/prom.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#7b2ff2"/><path d="M50,20 L76,34 V66 L50,80 L24,66 V34 Z" fill="none" stroke="#fff" stroke-width="6" stroke-linejoin="round"/><path d="M50,20 V80 M24,34 L50,48 L76,34" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="4" stroke-linejoin="round"/></svg>`
     },
     {
         id: 8,
@@ -99,7 +99,7 @@ export const SPACES_DATA = [
         price: 1400,
         rent: [120, 480, 1200, 2400, 4200],
         branchCost: 1000,
-        logoSvg: "assets/logos/monobank.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#1a1a1a"/><path d="M50,26 C38,26 26,34 26,52 C26,60 30,68 38,72 L50,72 L62,72 C70,68 74,60 74,52 C74,34 62,26 50,26 Z" fill="#2d2d2d"/><path d="M34,34 L38,24 L42,32" fill="#ff8da1"/><path d="M66,34 L62,24 L58,32" fill="#ff8da1"/><ellipse cx="40" cy="46" rx="5" ry="7" fill="#facc15"/><ellipse cx="60" cy="46" rx="5" ry="7" fill="#facc15"/><ellipse cx="40" cy="46" rx="2" ry="5" fill="#000"/><ellipse cx="60" cy="46" rx="2" ry="5" fill="#000"/><path d="M47,55 L50,52 L53,55" fill="#ff8da1"/><path d="M46,62 Q50,66 54,62" fill="none" stroke="#ff8da1" stroke-width="2" stroke-linecap="round"/><line x1="26" y1="48" x2="16" y2="46" stroke="#888" stroke-width="1.5"/><line x1="26" y1="52" x2="14" y2="53" stroke="#888" stroke-width="1.5"/><line x1="74" y1="48" x2="84" y2="46" stroke="#888" stroke-width="1.5"/><line x1="74" y1="52" x2="86" y2="53" stroke="#888" stroke-width="1.5"/></svg>`
     },
     {
         id: 9,
@@ -109,7 +109,7 @@ export const SPACES_DATA = [
         price: 1600,
         rent: [140, 560, 1400, 2800, 4800],
         branchCost: 1000,
-        logoSvg: "assets/logos/privatbank.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#538a00"/><rect x="28" y="24" width="14" height="52" rx="3" fill="#fff"/><rect x="28" y="24" width="38" height="14" rx="3" fill="#fff"/><rect x="52" y="24" width="14" height="30" rx="3" fill="#fff"/></svg>`
     },
     {
         id: 10,
@@ -125,7 +125,7 @@ export const SPACES_DATA = [
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
         branchCost: 1200,
-        logoSvg: "assets/logos/novaposhta.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#e31e24"/><rect x="26" y="26" width="48" height="48" rx="10" fill="#fff"/><path d="M32,32 H44 V38 H38 V44 H32 Z" fill="#e31e24"/><path d="M68,32 H56 V38 H62 V44 H68 Z" fill="#e31e24"/><path d="M32,68 H44 V62 H38 V56 H32 Z" fill="#e31e24"/><path d="M68,68 H56 V62 H62 V56 H68 Z" fill="#e31e24"/><rect x="46" y="46" width="8" height="8" rx="1" fill="#e31e24"/></svg>`
     },
     {
         id: 12,
@@ -135,7 +135,7 @@ export const SPACES_DATA = [
         price: 1800,
         rent: [160, 640, 1600, 3200, 5400],
         branchCost: 1200,
-        logoSvg: "assets/logos/ukrposhta.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#005bac"/><path d="M50,22 C36,22 28,32 28,44 C28,58 50,78 50,78 C50,78 72,58 72,44 C72,32 64,22 50,22 Z" fill="#ffd500"/><circle cx="50" cy="44" r="12" fill="#ffd500" stroke="#005bac" stroke-width="5"/><path d="M40,44 L36,48 M60,44 L64,48" stroke="#005bac" stroke-width="4" stroke-linecap="round"/></svg>`
     },
     {
         id: 13,
@@ -150,7 +150,7 @@ export const SPACES_DATA = [
         price: 2200,
         rent: [200, 800, 2000, 4000, 6000],
         branchCost: 1500,
-        logoSvg: "assets/logos/kyivstar.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#0057b7"/><g transform="translate(50,50)"><path d="M0,-10 L-5,-30 L0,-38 L5,-30 Z" fill="#ffd500"/><path d="M0,-10 L-5,-30 L0,-38 L5,-30 Z" fill="#ffd500" transform="rotate(72)"/><path d="M0,-10 L-5,-30 L0,-38 L5,-30 Z" fill="#ffd500" transform="rotate(144)"/><path d="M0,-10 L-5,-30 L0,-38 L5,-30 Z" fill="#ffd500" transform="rotate(216)"/><path d="M0,-10 L-5,-30 L0,-38 L5,-30 Z" fill="#ffd500" transform="rotate(288)"/><circle r="7" fill="#0057b7"/></g></svg>`
     },
     {
         id: 15,
@@ -166,7 +166,7 @@ export const SPACES_DATA = [
         price: 2600,
         rent: [240, 960, 2400, 4800, 7200],
         branchCost: 1500,
-        logoSvg: "assets/logos/epicentr.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#0054a6"/><path d="M25,75 V30 L50,18 L75,30 V75 Z" fill="#fff"/><rect x="38" y="36" width="24" height="9" fill="#0054a6"/><rect x="38" y="52" width="24" height="9" fill="#0054a6"/></svg>`
     },
     {
         id: 17,
@@ -176,7 +176,7 @@ export const SPACES_DATA = [
         price: 2800,
         rent: [260, 1000, 2600, 5200, 8000],
         branchCost: 1800,
-        logoSvg: "assets/logos/wog.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#fff"/><path d="M50,12 C50,12 80,44 80,60 C80,76 66,88 50,88 C34,88 20,76 20,60 C20,44 50,12 50,12 Z" fill="#009639"/><path d="M36,50 L44,72 L50,58 L56,72 L64,50" fill="none" stroke="#ffd500" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     },
     {
         id: 18,
@@ -184,7 +184,7 @@ export const SPACES_DATA = [
         type: SPACE_TYPES.UTILITY,
         price: 1500,
         multiplier: 100,
-        logoSvg: "assets/logos/diia.svg"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#000"/><rect x="22" y="30" width="18" height="40" rx="9" fill="none" stroke="#fff" stroke-width="5"/><line x1="40" y1="30" x2="40" y2="70" stroke="#fff" stroke-width="5"/><line x1="22" y1="70" x2="22" y2="78" stroke="#fff" stroke-width="5" stroke-linecap="round"/><line x1="40" y1="70" x2="40" y2="78" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="52" cy="30" r="3" fill="#fff"/><line x1="52" y1="38" x2="52" y2="70" stroke="#fff" stroke-width="5" stroke-linecap="round"/><path d="M62,38 C72,38 78,44 78,50 C78,56 72,56 62,56 L62,70" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="36" cy="84" r="3.5" fill="#00e5ff"/><circle cx="50" cy="84" r="3.5" fill="#ff4081"/><circle cx="64" cy="84" r="3.5" fill="#c6ff00"/></svg>`
     },
     {
         id: 19,
@@ -194,7 +194,7 @@ export const SPACES_DATA = [
         price: 3200,
         rent: [350, 1400, 3500, 7000, 10000],
         branchCost: 2000,
-        logoSvg: "assets/logos/megogo.png"
+        logoSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" rx="22" fill="#0d0d1a"/><path d="M24,68 V36 C24,28 32,28 36,34 L50,54 L64,34 C68,28 76,28 76,36 V68" fill="none" stroke="#20e29d" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>`
     }
 ];
 
