@@ -38,6 +38,7 @@ const tg = window.Telegram?.WebApp;
 // AdsGram Configuration (Rewarded Video Ads)
 const ADSGRAM_BLOCK_ID = "33680"; 
 let AdController = null;
+let activeAdTimeout = null;
 
 // Determine if we should run AdsGram in debug (testing) mode.
 // We enable debug mode if:
@@ -72,6 +73,15 @@ function initializeAdsGram() {
         AdController.addEventListener("onTooLongSession", (res) => {
             console.warn("AdsGram Event (onTooLongSession):", res);
         });
+
+        // Clear loading safety timeout as soon as the ad successfully starts playing
+        AdController.addEventListener("onStart", () => {
+            console.log("AdsGram Event (onStart): Ad started playing, clearing safety timeout.");
+            if (activeAdTimeout) {
+                clearTimeout(activeAdTimeout);
+                activeAdTimeout = null;
+            }
+        });
         
         console.log(`AdsGram initialized: blockId=${ADSGRAM_BLOCK_ID}, debug=${isDebugAd}`);
     }
@@ -80,8 +90,8 @@ function initializeAdsGram() {
 // Initial attempt to load if script is loaded early
 initializeAdsGram();
 
-// Cooldown settings (30 minutes in milliseconds)
-const AD_COOLDOWN_MS = 30 * 60 * 1000;
+// Cooldown settings (15 minutes in milliseconds)
+const AD_COOLDOWN_MS = 15 * 60 * 1000;
 
 function getAdRewardRemainingTime() {
     const lastRewarded = localStorage.getItem('last_ad_reward_time');
@@ -421,10 +431,11 @@ function setupMenuHandlers() {
 
                 let adResolved = false;
 
-                // 12 seconds safety timeout to release the button if AdsGram hangs
-                const safetyTimeout = setTimeout(() => {
+                // 12 seconds safety timeout to release the button if AdsGram hangs/fails to load
+                activeAdTimeout = setTimeout(() => {
                     if (!adResolved) {
                         adResolved = true;
+                        activeAdTimeout = null;
                         btnWatchAd.disabled = false;
                         if (btnTextSpan) btnTextSpan.innerText = originalText;
                         updateAdButtonText();
@@ -438,13 +449,16 @@ function setupMenuHandlers() {
                     AdController.show().then((result) => {
                         if (adResolved) return;
                         adResolved = true;
-                        clearTimeout(safetyTimeout);
+                        if (activeAdTimeout) {
+                            clearTimeout(activeAdTimeout);
+                            activeAdTimeout = null;
+                        }
                         btnWatchAd.disabled = false;
 
                         const remaining = getAdRewardRemainingTime();
                         if (remaining > 0) {
                             const remainingMin = Math.ceil(remaining / 60000);
-                            showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 30 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
+                            showModal("Дякуємо за підтримку! ❤️", `<p>Ви успішно переглянули рекламу та підтримали проект!<br><br>Оскільки бонус доступний раз на 15 хвилин, наступна нагорода буде доступна через <strong>${remainingMin} хв</strong>.</p>`, [
                                 { text: "Дякую! 🥰", class: "btn-primary" }
                             ]);
                         } else {
@@ -458,7 +472,10 @@ function setupMenuHandlers() {
                     }).catch((result) => {
                         if (adResolved) return;
                         adResolved = true;
-                        clearTimeout(safetyTimeout);
+                        if (activeAdTimeout) {
+                            clearTimeout(activeAdTimeout);
+                            activeAdTimeout = null;
+                        }
                         btnWatchAd.disabled = false;
                         if (btnTextSpan) btnTextSpan.innerText = originalText;
                         updateAdButtonText();
@@ -482,7 +499,10 @@ function setupMenuHandlers() {
                     console.error("Synchronous AdsGram show exception caught", err);
                     if (!adResolved) {
                         adResolved = true;
-                        clearTimeout(safetyTimeout);
+                        if (activeAdTimeout) {
+                            clearTimeout(activeAdTimeout);
+                            activeAdTimeout = null;
+                        }
                         btnWatchAd.disabled = false;
                         if (btnTextSpan) btnTextSpan.innerText = originalText;
                         updateAdButtonText();
