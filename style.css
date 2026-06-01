@@ -690,21 +690,18 @@ body {
 }
 
 .cell-logo {
-    width: 32px;
-    height: 32px;
-    margin: auto;
+    width: 22px;
+    height: 22px;
+    margin: 2px auto;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 7px;
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
-    transition: transform 0.2s ease, filter 0.2s ease;
-    overflow: hidden;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+    transition: transform 0.2s ease;
 }
 
 .cell:hover .cell-logo {
-    transform: scale(1.2);
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+    transform: scale(1.12);
 }
 
 .cell-logo svg, .cell-logo img {
@@ -1673,9 +1670,8 @@ body {
         max-width: 290px;
     }
     .cell-logo {
-        width: 26px;
-        height: 26px;
-        border-radius: 5px;
+        width: 18px;
+        height: 18px;
     }
     .cell-price {
         font-size: 0.45rem;
