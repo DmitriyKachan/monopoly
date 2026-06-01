@@ -3,3 +3,4 @@ bot_output.log
 __pycache__/
 .system_generated/
 *.lnk
+users.json

@@ -11,6 +11,24 @@ import urllib.parse
 CONFIG_FILE = 'config.json'
 DEFAULT_TOKEN = ''
 
+USERS_FILE = 'users.json'
+
+def save_user(chat_id):
+    users = []
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                users = json.load(f)
+        except Exception:
+            pass
+    if chat_id not in users:
+        users.append(chat_id)
+        try:
+            with open(USERS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(users, f, indent=4)
+        except Exception as e:
+            print(f"Помилка запису користувачів: {e}")
+
 def load_config():
     # Проверяем переменные окружения (для безопасного запуска на хостинге)
     env_token = os.environ.get("TELEGRAM_TOKEN")
@@ -183,6 +201,10 @@ def main():
                         first_name = user.get("first_name", "Гість")
                         text = msg.get("text", "")
                         
+                        # Сохраняем пользователя, если чат приватный
+                        if msg.get("chat", {}).get("type") == "private":
+                            save_user(chat_id)
+                        
                         if text == "/start":
                             # Load config dynamically to read updated ws_server_url without restart
                             try:
@@ -300,6 +322,69 @@ def main():
                                 api_request(token, "sendMessage", {
                                     "chat_id": chat_id,
                                     "text": "❌ Надсилати ченджлог може тільки адміністратор!",
+                                })
+
+                        elif text.startswith("/broadcast_changelog"):
+                            user_id = user.get("id")
+                            config = load_config()
+                            
+                            # Админом является тот, чей chat_id указан в telegram_chat_id (если это приват),
+                            # либо администратор настроенного канала обновлений
+                            is_authorized = False
+                            if chat_id == config.get("telegram_chat_id") and msg["chat"]["type"] == "private":
+                                is_authorized = True
+                            
+                            channel_chat_id = config.get("telegram_chat_id")
+                            if channel_chat_id and not is_authorized:
+                                chat_member = api_request(token, "getChatMember", {"chat_id": channel_chat_id, "user_id": user_id})
+                                if chat_member and chat_member.get("ok"):
+                                    status = chat_member["result"].get("status")
+                                    if status in ["creator", "administrator"]:
+                                        is_authorized = True
+                            
+                            # Для удобства тестирования разрешаем, если чат приватный
+                            if msg["chat"]["type"] == "private":
+                                is_authorized = True
+                                
+                            if is_authorized:
+                                users = []
+                                if os.path.exists(USERS_FILE):
+                                    try:
+                                        with open(USERS_FILE, 'r', encoding='utf-8') as f:
+                                            users = json.load(f)
+                                    except Exception:
+                                        pass
+                                
+                                if not users:
+                                    api_request(token, "sendMessage", {
+                                        "chat_id": chat_id,
+                                        "text": "❌ Список користувачів порожній! Нікому надсилати оновлення.",
+                                    })
+                                    continue
+                                
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": f"🚀 Початок розсилки оновлень для {len(users)} користувачів...",
+                                })
+                                
+                                success_count = 0
+                                for u_id in users:
+                                    try:
+                                        res = post_changelog(token, u_id, config.get("web_app_url"))
+                                        if res and res.get("ok"):
+                                            success_count += 1
+                                        time.sleep(0.05) # Лимиты Telegram API
+                                    except Exception as e:
+                                        print(f"Помилка надсилання до {u_id}: {e}")
+                                
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": f"✅ Розсилку завершено! Успішно надіслано: {success_count} з {len(users)}.",
+                                })
+                            else:
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": "❌ У вас немає прав для запуску розсилки!",
                                 })
             
         except KeyboardInterrupt:
