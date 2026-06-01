@@ -226,9 +226,9 @@ async def handle_connection(websocket):
                 
                 # Стоимость пакетов
                 PACK_VALUES = {
-                    "pack_100": {"title": "100 Моно-Коїнів 🪙", "amount": 50, "coins": 100},
-                    "pack_250": {"title": "250 Моно-Коїнів 🪙", "amount": 100, "coins": 250},
-                    "pack_600": {"title": "600 Моно-Коїнів 🪙", "amount": 200, "coins": 600}
+                    "pack_50": {"title": "50 Моно-Коїнів 🪙", "amount": 50, "coins": 50},
+                    "pack_120": {"title": "120 Моно-Коїнів 🪙", "amount": 100, "coins": 120},
+                    "pack_300": {"title": "300 Моно-Коїнів 🪙", "amount": 200, "coins": 300}
                 }
                 
                 if tg_id and package in PACK_VALUES:

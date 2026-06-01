@@ -2378,16 +2378,16 @@ function showFrameShopModal() {
         <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 0.75rem; margin-top: 1rem;">
             <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; text-align: center; color: var(--color-yellow);">Придбати Моно-Коїни за Stars ⭐️</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_100')">
-                    <span style="font-weight: 700;">🪙 100</span>
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_50')">
+                    <span style="font-weight: 700;">🪙 50</span>
                     <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 50</span>
                 </button>
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_250')">
-                    <span style="font-weight: 700;">🪙 250</span>
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_120')">
+                    <span style="font-weight: 700;">🪙 120</span>
                     <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 100</span>
                 </button>
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_600')">
-                    <span style="font-weight: 700;">🪙 600</span>
+                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_300')">
+                    <span style="font-weight: 700;">🪙 300</span>
                     <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 200</span>
                 </button>
             </div>

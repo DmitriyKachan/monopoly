@@ -257,16 +257,17 @@ def main():
                             if payload.startswith("pack_"):
                                 try:
                                     parts = payload.split("_")
-                                    pack_type = parts[0] + "_" + parts[1] # "pack_100"
+                                    pack_type = parts[0] + "_" + parts[1] # "pack_50"
                                     pay_user_id = parts[2] # "USERID"
                                     
                                     coins_to_add = 0
-                                    if "pack_100" in pack_type:
-                                        coins_to_add = 100
-                                    elif "pack_250" in pack_type:
-                                        coins_to_add = 250
-                                    elif "pack_600" in pack_type:
-                                        coins_to_add = 600
+                                    if "pack_50" in pack_type:
+                                        coins_to_add = 50
+                                    elif "pack_120" in pack_type:
+                                        coins_to_add = 120
+                                    elif "pack_300" in pack_type:
+                                        coins_to_add = 300
+                                        
                                         
                                     if coins_to_add > 0:
                                         db = db_load()
