@@ -210,19 +210,17 @@
 
                 <!-- 3. ACTIVE ROOM PANEL -->
                 <div id="lobby-room-active" class="lobby-sub-panel" style="display: none; flex: 1; flex-direction: column; justify-content: space-between; height: 100%;">
-                    <div>
-                        <div class="room-code-display" style="margin-bottom: 1rem;">
-                            Код кімнати: <span id="display-room-code" class="text-yellow">----</span>
-                        </div>
-                        
-                        <p class="matchmaking-status" id="matchmaking-status">Очікування гравців...</p>
-                        
-                        <div class="lobby-players" id="lobby-players-list">
-                            <!-- Players dynamically rendered here -->
-                        </div>
+                    <div class="room-code-display" style="margin-bottom: 0.5rem;">
+                        Код кімнати: <span id="display-room-code" class="text-yellow">----</span>
+                    </div>
+                    
+                    <p class="matchmaking-status" id="matchmaking-status" style="margin-bottom: 0.5rem;">Очікування гравців...</p>
+                    
+                    <div class="lobby-players" id="lobby-players-list" style="flex: 1; overflow-y: auto; margin-top: 0.5rem; margin-bottom: 1rem;">
+                        <!-- Players dynamically rendered here -->
                     </div>
 
-                    <div class="lobby-actions" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+                    <div class="lobby-actions" style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: auto;">
                         <button class="btn btn-primary" id="btn-start-multiplayer" style="display: none; width: 100%;">Розпочати гру 🎮</button>
                         <button class="btn btn-secondary" id="btn-lobby-invite" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); border: none; box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3); width: 100%;">
                             <span class="btn-icon"><i class="fa-solid fa-share-nodes"></i></span>
