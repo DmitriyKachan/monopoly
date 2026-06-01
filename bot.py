@@ -58,6 +58,55 @@ def api_request(token, method, params=None):
         print(f"Помилка запиту до API ({method}): {e}")
         return None
 
+def post_changelog(token, chat_id, web_app_url):
+    photo_url = "https://dmitriykachan.github.io/monopoly/assets/changelog_v31.png"
+    
+    changelog_text = (
+        "📢 *ОНОВЛЕННЯ МОНОПОЛІЯ УКРАЇНА: ВЕРСІЯ v31* 📢\n\n"
+        "Магнати, ми підготували для вас велике оновлення гри! Що змінилося:\n\n"
+        "🛡️ *Класична Тюрма замість Укриття:*\n"
+        "• Клітка 'Укриття' тепер офіційно стала *Тюрмою*.\n"
+        "• Клітка 'Повітряна тривога' тепер називається *'Іди в Тюрму'*.\n"
+        "• Донати волонтерам при виході замінено на сплату класичного штрафу ₴500.\n"
+        "• Оновлено всі лог-повідомлення та картки Шансу відповідно до класичних правил.\n\n"
+        "🎯 *Оновлене позиціонування фішок:*\n"
+        "• Фішки тепер розташовані у верхній половині клітин і не перекривають ціну та філії внизу.\n\n"
+        "🎉 *Оптимізація конфетті:*\n"
+        "• Конфетті більше не заважає при звичайних покупках, а стріляє тільки на великих подіях (виграш в грі, джекпот Фонду або бонусні гроші з Шансу).\n\n"
+        "🔍 *Повна інспекція ячейок:*\n"
+        "• Тепер можна клікнути на *будь-яку* ячейку на полі для перегляду детальної інформації про ціни, оренду або правила клітини.\n\n"
+        "⚡️ *Автоматичне скидання кэшу:* більше жодних проблем зі старими версіями на смартфонах!\n\n"
+        "🎮 Натискайте кнопку нижче та розпочинайте гру на новій версії!"
+    )
+
+    import time
+    dynamic_url = web_app_url
+    cache_bust = f"t={int(time.time())}"
+    if "?" in dynamic_url:
+        dynamic_url = f"{dynamic_url}&{cache_bust}"
+    else:
+        dynamic_url = f"{dynamic_url}?{cache_bust}"
+
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {
+                    "text": "Грати в оновлену версію 🏦🎮",
+                    "web_app": {"url": dynamic_url}
+                }
+            ]
+        ]
+    }
+
+    params = {
+        "chat_id": chat_id,
+        "photo": photo_url,
+        "caption": changelog_text,
+        "parse_mode": "Markdown",
+        "reply_markup": keyboard
+    }
+    return api_request(token, "sendPhoto", params)
+
 def main():
     config = load_config()
     token = config.get("telegram_token")
@@ -87,6 +136,24 @@ def main():
     
     bot_info = me["result"]
     print(f"Бот успішно підключений: @{bot_info['username']} ({bot_info['first_name']})")
+    
+    # Встановлюємо кнопку меню (Menu Button) для швидкого запуску WebApp з останнім URL
+    try:
+        menu_button_params = {
+            "menu_button": {
+                "type": "web_app",
+                "text": "Грати 🏦🎮",
+                "web_app": {"url": web_app_url}
+            }
+        }
+        res = api_request(token, "setChatMenuButton", menu_button_params)
+        if res and res.get("ok"):
+            print("Кнопка меню WebApp успішно налаштована!")
+        else:
+            print(f"Не вдалося налаштувати кнопку меню: {res}")
+    except Exception as e:
+        print(f"Помилка при встановленні кнопки меню: {e}")
+        
     print("Початок прослуховування повідомлень (Long Polling)... Натисніть Ctrl+C для виходу.")
     print("-" * 60)
 
@@ -123,15 +190,19 @@ def main():
                                 dynamic_web_app_url = dynamic_config.get("web_app_url")
                                 dynamic_ws_server_url = dynamic_config.get("ws_server_url", "")
                                 
+                                # Автоматический сброс кэша по timestamp
+                                cache_bust = f"t={int(time.time())}"
+                                if "?" in dynamic_web_app_url:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}&{cache_bust}"
+                                else:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}?{cache_bust}"
+
                                 if dynamic_ws_server_url:
                                     param = urllib.parse.urlencode({"ws_server": dynamic_ws_server_url})
-                                    if "?" in dynamic_web_app_url:
-                                        dynamic_web_app_url = f"{dynamic_web_app_url}&{param}"
-                                    else:
-                                        dynamic_web_app_url = f"{dynamic_web_app_url}?{param}"
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}&{param}"
                             except Exception as e:
                                 print(f"Помилка при читанні конфігурації: {e}")
-                                dynamic_web_app_url = web_app_url
+                                dynamic_web_app_url = f"{web_app_url}&t={int(time.time())}" if "?" in web_app_url else f"{web_app_url}?t={int(time.time())}"
                             
                             welcome_msg = (
                                 f"Привіт, {first_name}! 🏦🇺🇦\n\n"
@@ -164,6 +235,72 @@ def main():
                                 "reply_markup": keyboard
                             })
                             print(f"Надіслано привітання для {user.get('username', first_name)}")
+                            
+                        elif text.startswith("/setup_channel"):
+                            user_id = user.get("id")
+                            chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
+                            is_admin = False
+                            if chat_member and chat_member.get("ok"):
+                                status = chat_member["result"].get("status")
+                                if status in ["creator", "administrator"]:
+                                    is_admin = True
+                            
+                            is_private = msg["chat"]["type"] == "private"
+                            
+                            if is_admin or is_private:
+                                try:
+                                    config = load_config()
+                                    config["telegram_chat_id"] = chat_id
+                                    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                                        json.dump(config, f, indent=4, ensure_ascii=False)
+                                except Exception as e:
+                                    print(f"Помилка запису в конфіг: {e}")
+
+                                if not is_private:
+                                    permissions = {
+                                        "can_send_messages": False,
+                                        "can_send_media_messages": False,
+                                        "can_send_polls": False,
+                                        "can_send_other_messages": False,
+                                        "can_add_web_page_previews": False,
+                                        "can_change_info": False,
+                                        "can_invite_users": True,
+                                        "can_pin_messages": False
+                                    }
+                                    api_request(token, "setChatPermissions", {"chat_id": chat_id, "permissions": permissions})
+
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": "✅ *Канал оновлень успішно налаштовано!*\n\nБот встановив режим 'Тільки для читання' для користувачів та публікує повідомлення про оновлення...",
+                                    "parse_mode": "Markdown"
+                                })
+
+                                post_changelog(token, chat_id, config.get("web_app_url"))
+                            else:
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": "❌ Налаштувати канал може тільки адміністратор або творець чату!",
+                                })
+
+                        elif text.startswith("/post_changelog"):
+                            user_id = user.get("id")
+                            chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
+                            is_admin = False
+                            if chat_member and chat_member.get("ok"):
+                                status = chat_member["result"].get("status")
+                                if status in ["creator", "administrator"]:
+                                    is_admin = True
+                            
+                            is_private = msg["chat"]["type"] == "private"
+                            
+                            if is_admin or is_private:
+                                config = load_config()
+                                post_changelog(token, chat_id, config.get("web_app_url"))
+                            else:
+                                api_request(token, "sendMessage", {
+                                    "chat_id": chat_id,
+                                    "text": "❌ Надсилати ченджлог може тільки адміністратор!",
+                                })
             
         except KeyboardInterrupt:
             print("\nБот зупинений.")
