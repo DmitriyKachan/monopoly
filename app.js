@@ -41,7 +41,7 @@ const ADSGRAM_BLOCK_ID = "33680";
 let AdController = null;
 
 if (window.Adsgram) {
-    AdController = window.Adsgram.createAdListener({
+    AdController = window.Adsgram.init({
         blockId: ADSGRAM_BLOCK_ID
     });
 }
@@ -331,7 +331,7 @@ function setupMenuHandlers() {
     if (btnWatchAd) {
         btnWatchAd.addEventListener('click', () => {
             if (!AdController && window.Adsgram) {
-                AdController = window.Adsgram.createAdListener({
+                AdController = window.Adsgram.init({
                     blockId: ADSGRAM_BLOCK_ID
                 });
             }
