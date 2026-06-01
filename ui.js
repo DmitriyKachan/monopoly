@@ -164,6 +164,15 @@ export function renderBoard(gameState, onCellClick) {
             cell.appendChild(ownerDot);
         }
 
+        // 6.5 Mortgage Label Overlay
+        if (space.isMortgaged) {
+            cell.classList.add('mortgaged-cell');
+            const mortgageOverlay = document.createElement('div');
+            mortgageOverlay.className = 'cell-mortgage-badge';
+            mortgageOverlay.innerText = 'ЗАСТАВА';
+            cell.appendChild(mortgageOverlay);
+        }
+
         // 7. Token Container
         const tokenContainer = document.createElement('div');
         tokenContainer.className = 'cell-tokens';
@@ -395,16 +404,29 @@ export function updateGameLog(gameState) {
 }
 
 // Display Property Info card details in popup modal
-export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, onUpgrade = null) {
+export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, onUpgrade = null, onMortgage = null, onUnmortgage = null) {
     const isSpecial = space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY;
     const headerColor = space.group ? `var(--prop-${space.group})` : '#475569';
     
     let detailsHtml = `
-        <div class="deed-card">
+        <div class="deed-card ${space.isMortgaged ? 'mortgaged' : ''}">
             <div class="deed-header" style="background-color: ${headerColor};">
                 ${space.name}
             </div>
             <div class="deed-body">
+    `;
+
+    if (space.isMortgaged) {
+        detailsHtml += `
+            <div class="deed-mortgaged-banner">
+                <i class="fa-solid fa-lock text-danger" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
+                <div style="font-weight: 800; color: var(--color-danger); font-size: 0.9rem;">МАЙНО ЗАКЛАДЕНО В БАНК</div>
+                <div style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px;">Оренда не нараховується. Будівництво заблоковано.</div>
+            </div>
+        `;
+    }
+
+    detailsHtml += `
                 <div class="deed-row"><span>Ціна купівлі</span><strong>₴${space.price}</strong></div>
     `;
 
@@ -438,10 +460,21 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
     if (!isSelfOwner) {
         buttons.push({ text: `Придбати за ₴${space.price}`, class: 'btn-primary', onClick: onBuy });
         buttons.push({ text: 'Відхилити', class: 'btn-secondary', onClick: onDecline });
-    } else if (!isSpecial && space.branches < 4 && onUpgrade) {
-        buttons.push({ text: `Побудувати філію за ₴${space.branchCost}`, class: 'btn-primary', onClick: onUpgrade });
-        buttons.push({ text: 'Закрити', class: 'btn-secondary' });
     } else {
+        if (space.isMortgaged) {
+            const cost = Math.floor(space.price * 0.55);
+            buttons.push({ text: `Викупити за ₴${cost}`, class: 'btn-primary', onClick: onUnmortgage });
+        } else {
+            // Can upgrade street property if no mortgaged and not maxed
+            if (!isSpecial && space.branches < 4 && onUpgrade) {
+                buttons.push({ text: `Побудувати філію (₴${space.branchCost})`, class: 'btn-primary', onClick: onUpgrade });
+            }
+            // Can mortgage if has no branches
+            if ((!space.branches || space.branches === 0) && onMortgage) {
+                const val = Math.floor(space.price * 0.5);
+                buttons.push({ text: `Заставити (+₴${val})`, class: 'btn-danger', onClick: onMortgage });
+            }
+        }
         buttons.push({ text: 'Закрити', class: 'btn-secondary' });
     }
 

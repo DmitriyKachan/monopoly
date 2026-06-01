@@ -222,8 +222,10 @@ export class GameState {
             if (s.type === SPACE_TYPES.PROPERTY) {
                 s.owner = null;
                 s.branches = 0;
+                s.isMortgaged = false;
             } else if (s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY) {
                 s.owner = null;
+                s.isMortgaged = false;
             }
             return s;
         });
@@ -342,6 +344,10 @@ export class GameState {
         const allOwnedBySame = sameGroupSpaces.every(s => s.owner === playerId);
         if (!allOwnedBySame) return false;
 
+        // Cannot build if any property in the color group is mortgaged
+        const anyMortgaged = sameGroupSpaces.some(s => s.isMortgaged);
+        if (anyMortgaged) return false;
+
         player.money -= space.branchCost;
         space.branches++;
         this.log(`${player.name} побудував філію на ${space.name} за ₴${space.branchCost}`, 'gain');
@@ -351,7 +357,7 @@ export class GameState {
     // Rent Math
     getRentCost(spaceId, diceSum = 7) {
         const space = this.spaces.find(s => s.id === spaceId);
-        if (!space || space.owner === null) return 0;
+        if (!space || space.owner === null || space.isMortgaged) return 0;
 
         const ownerId = space.owner;
 
@@ -521,6 +527,45 @@ export class GameState {
         space.owner = null;
         owner.money += sellValue;
         this.log(`${owner.name} продав компанію ${space.name} банку за ₴${sellValue}`, 'system');
+        return true;
+    }
+
+    mortgageProperty(playerId, spaceId) {
+        const player = this.players.find(p => p.id === playerId);
+        const space = this.spaces.find(s => s.id === spaceId);
+
+        if (!player || !space || player.isBankrupt) return false;
+        if (space.owner !== playerId || space.isMortgaged) return false;
+
+        // Cannot mortgage if there are branches built on this property or any other property in the group
+        if (space.group) {
+            const sameGroupSpaces = this.spaces.filter(s => s.group === space.group);
+            const hasBranches = sameGroupSpaces.some(s => s.branches > 0);
+            if (hasBranches) return false;
+        } else if (space.branches && space.branches > 0) {
+            return false;
+        }
+
+        const mortgageValue = Math.floor(space.price * 0.5);
+        space.isMortgaged = true;
+        player.money += mortgageValue;
+        this.log(`${player.name} заставив компанію ${space.name} за ₴${mortgageValue}`, 'pay');
+        return true;
+    }
+
+    unmortgageProperty(playerId, spaceId) {
+        const player = this.players.find(p => p.id === playerId);
+        const space = this.spaces.find(s => s.id === spaceId);
+
+        if (!player || !space || player.isBankrupt) return false;
+        if (space.owner !== playerId || !space.isMortgaged) return false;
+
+        const unmortgageCost = Math.floor(space.price * 0.55); // 50% + 10% penalty
+        if (player.money < unmortgageCost) return false;
+
+        space.isMortgaged = false;
+        player.money -= unmortgageCost;
+        this.log(`${player.name} викупив з застави компанію ${space.name} за ₴${unmortgageCost}`, 'gain');
         return true;
     }
 
