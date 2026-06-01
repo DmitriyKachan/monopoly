@@ -194,15 +194,22 @@ def main():
                 for update in updates["result"]:
                     offset = update["update_id"] + 1
                     
+                    msg = None
                     if "message" in update:
                         msg = update["message"]
+                    elif "channel_post" in update:
+                        msg = update["channel_post"]
+                        
+                    if msg:
                         chat_id = msg["chat"]["id"]
-                        user = msg.get("from", {})
-                        first_name = user.get("first_name", "Гість")
+                        user = msg.get("from", {}) if msg.get("from") else None
+                        first_name = user.get("first_name", "Гість") if user else "Канал"
                         text = msg.get("text", "")
                         
-                        # Сохраняем пользователя, если чат приватный
-                        is_private = msg.get("chat", {}).get("type") == "private"
+                        chat_type = msg.get("chat", {}).get("type")
+                        is_private = chat_type == "private"
+                        is_channel = chat_type == "channel"
+                        
                         if is_private:
                             save_user(chat_id)
                             # Видаляємо будь-які повідомлення користувача в ЛС, крім команд запуску та розсилки,
@@ -267,17 +274,16 @@ def main():
                             print(f"Надіслано привітання для {user.get('username', first_name)}")
                             
                         elif text.startswith("/setup_channel"):
-                            user_id = user.get("id")
-                            chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
-                            is_admin = False
-                            if chat_member and chat_member.get("ok"):
-                                status = chat_member["result"].get("status")
-                                if status in ["creator", "administrator"]:
-                                    is_admin = True
+                            is_authorized = is_private or is_channel
+                            if not is_authorized and user:
+                                user_id = user.get("id")
+                                chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
+                                if chat_member and chat_member.get("ok"):
+                                    status = chat_member["result"].get("status")
+                                    if status in ["creator", "administrator"]:
+                                        is_authorized = True
                             
-                            is_private = msg["chat"]["type"] == "private"
-                            
-                            if is_admin or is_private:
+                            if is_authorized:
                                 try:
                                     config = load_config()
                                     config["telegram_chat_id"] = chat_id
@@ -286,7 +292,7 @@ def main():
                                 except Exception as e:
                                     print(f"Помилка запису в конфіг: {e}")
 
-                                if not is_private:
+                                if not is_private and not is_channel:
                                     permissions = {
                                         "can_send_messages": False,
                                         "can_send_media_messages": False,
@@ -299,11 +305,18 @@ def main():
                                     }
                                     api_request(token, "setChatPermissions", {"chat_id": chat_id, "permissions": permissions})
 
-                                api_request(token, "sendMessage", {
-                                    "chat_id": chat_id,
-                                    "text": "✅ *Канал оновлень успішно налаштовано!*\n\nБот встановив режим 'Тільки для читання' для користувачів та публікує повідомлення про оновлення...",
-                                    "parse_mode": "Markdown"
-                                })
+                                # Для каналов мы удаляем команду /setup_channel, чтобы не засорять ленту
+                                if is_channel:
+                                    try:
+                                        api_request(token, "deleteMessage", {"chat_id": chat_id, "message_id": msg["message_id"]})
+                                    except Exception:
+                                        pass
+                                else:
+                                    api_request(token, "sendMessage", {
+                                        "chat_id": chat_id,
+                                        "text": "✅ *Канал оновлень успішно налаштовано!*\n\nБот встановив режим 'Тільки для читання' для користувачів та публікує повідомлення про оновлення...",
+                                        "parse_mode": "Markdown"
+                                    })
 
                                 post_changelog(token, chat_id, config.get("web_app_url"))
                             else:
@@ -313,17 +326,25 @@ def main():
                                 })
 
                         elif text.startswith("/post_changelog"):
-                            user_id = user.get("id")
-                            chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
-                            is_admin = False
-                            if chat_member and chat_member.get("ok"):
-                                status = chat_member["result"].get("status")
-                                if status in ["creator", "administrator"]:
-                                    is_admin = True
+                            is_authorized = is_private or is_channel
+                            if not is_authorized and user:
+                                user_id = user.get("id")
+                                chat_member = api_request(token, "getChatMember", {"chat_id": chat_id, "user_id": user_id})
+                                is_admin = False
+                                if chat_member and chat_member.get("ok"):
+                                    status = chat_member["result"].get("status")
+                                    if status in ["creator", "administrator"]:
+                                        is_admin = True
+                                if is_admin:
+                                    is_authorized = True
                             
-                            is_private = msg["chat"]["type"] == "private"
-                            
-                            if is_admin or is_private:
+                            if is_authorized:
+                                # Для каналов удаляем команду, чтобы не засорять
+                                if is_channel:
+                                    try:
+                                        api_request(token, "deleteMessage", {"chat_id": chat_id, "message_id": msg["message_id"]})
+                                    except Exception:
+                                        pass
                                 config = load_config()
                                 post_changelog(token, chat_id, config.get("web_app_url"))
                             else:
@@ -333,17 +354,17 @@ def main():
                                 })
 
                         elif text.startswith("/broadcast_changelog"):
-                            user_id = user.get("id")
+                            user_id = user.get("id") if user else None
                             config = load_config()
                             
                             # Админом является тот, чей chat_id указан в telegram_chat_id (если это приват),
                             # либо администратор настроенного канала обновлений
                             is_authorized = False
-                            if chat_id == config.get("telegram_chat_id") and msg["chat"]["type"] == "private":
+                            if chat_id == config.get("telegram_chat_id") and is_private:
                                 is_authorized = True
                             
                             channel_chat_id = config.get("telegram_chat_id")
-                            if channel_chat_id and not is_authorized:
+                            if channel_chat_id and not is_authorized and user_id:
                                 chat_member = api_request(token, "getChatMember", {"chat_id": channel_chat_id, "user_id": user_id})
                                 if chat_member and chat_member.get("ok"):
                                     status = chat_member["result"].get("status")
@@ -351,7 +372,7 @@ def main():
                                         is_authorized = True
                             
                             # Для удобства тестирования разрешаем, если чат приватный
-                            if msg["chat"]["type"] == "private":
+                            if is_private:
                                 is_authorized = True
                                 
                             if is_authorized:
