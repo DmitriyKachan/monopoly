@@ -707,6 +707,56 @@ function handleCellClick(index) {
                         alert("Недостатньо грошей для будівництва філії!");
                     }
                 }
+            },
+            () => {
+                // Mortgage handler
+                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
+                    const success = game.mortgageProperty(mp.playerId, space.id);
+                    if (success) {
+                        mp.sendAction({ type: 'mortgage', playerId: mp.playerId, spaceId: space.id });
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    } else {
+                        alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
+                    }
+                } else if (!isMultiplayerGame) {
+                    const success = game.mortgageProperty(game.currentPlayerIndex, space.id);
+                    if (success) {
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    } else {
+                        alert("Не вдалося заставити майно! Перевірте, чи немає побудованих філій у цієї групи.");
+                    }
+                }
+            },
+            () => {
+                // Unmortgage handler
+                if (isMultiplayerGame && game.currentPlayerIndex === mp.playerId) {
+                    const success = game.unmortgageProperty(mp.playerId, space.id);
+                    if (success) {
+                        mp.sendAction({ type: 'unmortgage', playerId: mp.playerId, spaceId: space.id });
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    } else {
+                        alert("Недостатньо грошей для викупу майна!");
+                    }
+                } else if (!isMultiplayerGame) {
+                    const success = game.unmortgageProperty(game.currentPlayerIndex, space.id);
+                    if (success) {
+                        renderBoard(game, handleCellClick);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                        hideModal();
+                    } else {
+                        alert("Недостатньо грошей для викупу майна!");
+                    }
+                }
             }
         );
     }
@@ -1198,12 +1248,12 @@ function resolveUserDebt(playerId, rentAmount) {
             `;
         });
 
-        const propsToSell = game.spaces.filter(s => s.owner === playerId && (!s.branches || s.branches === 0));
+        const propsToSell = game.spaces.filter(s => s.owner === playerId && !s.isMortgaged && (!s.branches || s.branches === 0));
         propsToSell.forEach(s => {
             const sellVal = Math.floor(s.price * 0.5);
             itemsHtml += `
                 <button class="btn btn-secondary" style="width:100%; display:flex; justify-content:space-between;" id="btn-sell-prop-${s.id}">
-                    <span>Продати компанію ${s.name}</span><strong>+₴${sellVal}</strong>
+                    <span>Заставити компанію ${s.name}</span><strong>+₴${sellVal}</strong>
                 </button>
             `;
         });
@@ -1271,9 +1321,9 @@ function resolveUserDebt(playerId, rentAmount) {
 
         propsToSell.forEach(s => {
             document.getElementById(`btn-sell-prop-${s.id}`).onclick = () => {
-                game.sellProperty(s.id);
+                game.mortgageProperty(playerId, s.id);
                 if (isMultiplayerGame) {
-                    mp.sendAction({ type: 'sell_property', playerId, spaceId: s.id });
+                    mp.sendAction({ type: 'mortgage', playerId, spaceId: s.id });
                 }
                 renderBoard(game, handleCellClick);
                 renderPlayersHUD(game);
@@ -1507,12 +1557,12 @@ function resolveBotDebt(botId, rentAmount) {
         }
     }
 
-    // 2. Sell properties
+    // 2. Mortgage properties
     if (bot.money < 0) {
-        const props = game.spaces.filter(s => s.owner === botId && (!s.branches || s.branches === 0));
+        const props = game.spaces.filter(s => s.owner === botId && !s.isMortgaged && (!s.branches || s.branches === 0));
         for (let s of props) {
             if (bot.money >= 0) break;
-            game.sellProperty(s.id);
+            game.mortgageProperty(botId, s.id);
             renderBoard(game, handleCellClick);
             renderPlayersHUD(game);
             updateGameLog(game);
@@ -1637,6 +1687,20 @@ function handleRemoteAction(action) {
 
         case 'sell_property':
             game.sellProperty(action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'mortgage':
+            game.mortgageProperty(playerId, action.spaceId);
+            renderBoard(game, handleCellClick);
+            renderPlayersHUD(game);
+            updateGameLog(game);
+            break;
+
+        case 'unmortgage':
+            game.unmortgageProperty(playerId, action.spaceId);
             renderBoard(game, handleCellClick);
             renderPlayersHUD(game);
             updateGameLog(game);
