@@ -396,7 +396,16 @@ function setupMenuHandlers() {
 
                     console.warn("AdsGram Error:", result);
                     const errorMsg = result.description || result.error || "перегляд відхилено";
-                    showModal("Рекламу перервано ⚠️", `<p>Для отримання бонусу необхідно переглянути відео повністю без пропусків. Спробуйте ще раз! (Статус: ${errorMsg})</p>`, [
+                    
+                    let title = "Рекламу перервано ⚠️";
+                    let text = `<p>Для отримання бонусу необхідно переглянути відео повністю без пропусків. Спробуйте ще раз! (Статус: ${errorMsg})</p>`;
+                    
+                    if (errorMsg.includes("нет доступной рекламы") || errorMsg.toLowerCase().includes("no ad") || errorMsg.toLowerCase().includes("no_fill")) {
+                        title = "Реклама тимчасово недоступна ⚠️";
+                        text = `<p>Наразі у провайдера немає доступної реклами для показу. Будь ласка, спробуйте ще раз трохи пізніше! (Статус: ${errorMsg})</p>`;
+                    }
+
+                    showModal(title, text, [
                         { text: "Спробувати знову", class: "btn-secondary" }
                     ]);
                 });
