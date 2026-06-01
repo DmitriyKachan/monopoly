@@ -100,7 +100,11 @@ export function renderBoard(gameState, onCellClick) {
         if (space.logoSvg) {
             const logoEl = document.createElement('div');
             logoEl.className = 'cell-logo';
-            logoEl.innerHTML = space.logoSvg;
+            if (space.logoSvg.includes('<svg') || space.logoSvg.includes('<img')) {
+                logoEl.innerHTML = space.logoSvg;
+            } else {
+                logoEl.innerHTML = `<img src="${space.logoSvg}" alt="${space.name}">`;
+            }
             cell.appendChild(logoEl);
         } else {
             nameEl = document.createElement('div');
