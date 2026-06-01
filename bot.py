@@ -11,23 +11,41 @@ import urllib.parse
 CONFIG_FILE = 'config.json'
 DEFAULT_TOKEN = ''
 
-USERS_FILE = 'users.json'
+DB_BIN_ID = "deaeead"
+DB_URL = f"https://extendsclass.com/api/json-storage/bin/{DB_BIN_ID}"
+
+def db_load():
+    req = urllib.request.Request(DB_URL, method='GET')
+    try:
+        with urllib.request.urlopen(req) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        print(f"Помилка завантаження БД з хмари: {e}")
+        return {"telegram_chat_id": None, "users": []}
+
+def db_save(data):
+    req = urllib.request.Request(
+        DB_URL, 
+        data=json.dumps(data).encode('utf-8'), 
+        headers={"Content-Type": "application/json"}, 
+        method='PUT'
+    )
+    try:
+        with urllib.request.urlopen(req) as response:
+            res = json.loads(response.read().decode('utf-8'))
+            return res.get("status") == 0
+    except Exception as e:
+        print(f"Помилка збереження БД в хмару: {e}")
+        return False
 
 def save_user(chat_id):
-    users = []
-    if os.path.exists(USERS_FILE):
-        try:
-            with open(USERS_FILE, 'r', encoding='utf-8') as f:
-                users = json.load(f)
-        except Exception:
-            pass
-    if chat_id not in users:
-        users.append(chat_id)
-        try:
-            with open(USERS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(users, f, indent=4)
-        except Exception as e:
-            print(f"Помилка запису користувачів: {e}")
+    db = db_load()
+    if "users" not in db:
+        db["users"] = []
+    if chat_id not in db["users"]:
+        db["users"].append(chat_id)
+        db_save(db)
+        print(f"Користувач {chat_id} збережений в БД.")
 
 def load_config():
     # Проверяем переменные окружения (для безопасного запуска на хостинге)
@@ -285,12 +303,11 @@ def main():
                             
                             if is_authorized:
                                 try:
-                                    config = load_config()
-                                    config["telegram_chat_id"] = chat_id
-                                    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
-                                        json.dump(config, f, indent=4, ensure_ascii=False)
+                                    db = db_load()
+                                    db["telegram_chat_id"] = chat_id
+                                    db_save(db)
                                 except Exception as e:
-                                    print(f"Помилка запису в конфіг: {e}")
+                                    print(f"Помилка запису в БД: {e}")
 
                                 if not is_private and not is_channel:
                                     permissions = {
@@ -356,14 +373,15 @@ def main():
                         elif text.startswith("/broadcast_changelog"):
                             user_id = user.get("id") if user else None
                             config = load_config()
+                            db = db_load()
+                            channel_chat_id = db.get("telegram_chat_id")
                             
                             # Админом является тот, чей chat_id указан в telegram_chat_id (если это приват),
                             # либо администратор настроенного канала обновлений
                             is_authorized = False
-                            if chat_id == config.get("telegram_chat_id") and is_private:
+                            if chat_id == channel_chat_id and is_private:
                                 is_authorized = True
                             
-                            channel_chat_id = config.get("telegram_chat_id")
                             if channel_chat_id and not is_authorized and user_id:
                                 chat_member = api_request(token, "getChatMember", {"chat_id": channel_chat_id, "user_id": user_id})
                                 if chat_member and chat_member.get("ok"):
@@ -376,13 +394,7 @@ def main():
                                 is_authorized = True
                                 
                             if is_authorized:
-                                users = []
-                                if os.path.exists(USERS_FILE):
-                                    try:
-                                        with open(USERS_FILE, 'r', encoding='utf-8') as f:
-                                            users = json.load(f)
-                                    except Exception:
-                                        pass
+                                users = db.get("users", [])
                                 
                                 if not users:
                                     api_request(token, "sendMessage", {
