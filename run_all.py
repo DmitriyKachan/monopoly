@@ -37,7 +37,7 @@ async def http_health_check(*args, **kwargs):
             path = second.path
             is_legacy = False
             
-    if path in ["/health", "/health/", "/"]:
+    if path in ["/health", "/health/"]:
         if is_legacy:
             return http.HTTPStatus.OK, [("Content-Type", "text/plain")], b"OK"
         else:
