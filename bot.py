@@ -127,15 +127,15 @@ def load_config():
     if env_token:
         return {
             "telegram_token": env_token,
-            "web_app_url": env_web_url or "https://dmitriykachan.github.io/monopoly/?v=33",
-            "ws_server_url": env_ws_url or "wss://jiubehb-monopoly-backend.hf.space"
+            "web_app_url": env_web_url or "https://dmitriykachan.github.io/monopoly/?v=34",
+            "ws_server_url": env_ws_url or "wss://monopoly-backend-piny.onrender.com"
         }
 
     if not os.path.exists(CONFIG_FILE):
         config = {
             "telegram_token": DEFAULT_TOKEN,
-            "web_app_url": "https://dmitriykachan.github.io/monopoly/?v=33",
-            "ws_server_url": "wss://jiubehb-monopoly-backend.hf.space"
+            "web_app_url": "https://dmitriykachan.github.io/monopoly/?v=34",
+            "ws_server_url": "wss://monopoly-backend-piny.onrender.com"
         }
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
@@ -146,11 +146,11 @@ def load_config():
 
 def get_clean_web_app_url():
     config = load_config()
-    url = config.get("web_app_url", "https://dmitriykachan.github.io/monopoly/?v=33")
+    url = config.get("web_app_url", "https://dmitriykachan.github.io/monopoly/?v=34")
     try:
         parsed = urllib.parse.urlparse(url)
         params = urllib.parse.parse_qs(parsed.query)
-        params['v'] = ["33"]
+        params['v'] = ["34"]
         new_query = urllib.parse.urlencode(params, doseq=True)
         return urllib.parse.urlunparse((
             parsed.scheme,
