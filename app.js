@@ -256,7 +256,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fade out splash screen after 1.5s
     setTimeout(() => {
         if (!hasStartParam) {
-            switchScreen('screen-menu');
+            // Automatically create a private room and enter the lobby on startup
+            createRoomWorkflow(false);
         }
     }, 1500);
 
@@ -383,6 +384,7 @@ function createRoomWorkflow(autoShare = false) {
 function setupBackButton() {
     document.querySelectorAll('.btn-back').forEach(btn => {
         btn.addEventListener('click', () => {
+            if (mp) mp.disconnect();
             switchScreen('screen-menu');
         });
     });
@@ -393,10 +395,16 @@ function setupBackButton() {
             if (activeScreen && activeScreen.id !== 'screen-menu') {
                 if (activeScreen.id === 'screen-game') {
                     showModal("Вихід з гри", "<p>Ви впевнені, що хочете вийти з поточної сесії? Ваш прогрес буде втрачено.</p>", [
-                        { text: "Так, вийти", class: "btn-danger", onClick: () => switchScreen('screen-menu') },
+                        { text: "Так, вийти", class: "btn-danger", onClick: () => {
+                            if (mp) mp.disconnect();
+                            switchScreen('screen-menu');
+                        } },
                         { text: "Скасувати", class: "btn-secondary" }
                     ]);
                 } else {
+                    if (activeScreen && activeScreen.id === 'screen-lobby') {
+                        if (mp) mp.disconnect();
+                    }
                     switchScreen('screen-menu');
                 }
             }
