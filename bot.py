@@ -144,13 +144,28 @@ def load_config():
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def get_current_html_version():
+    try:
+        import re
+        html_path = os.path.join(os.path.dirname(__file__), "index.html")
+        if os.path.exists(html_path):
+            with open(html_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            match = re.search(r'app\.js\?v=(\d+)', content)
+            if match:
+                return match.group(1)
+    except Exception as e:
+        print(f"Error detecting version from index.html: {e}")
+    return "35" # Default fallback
+
 def get_clean_web_app_url():
     config = load_config()
     url = config.get("web_app_url", "https://dmitriykachan.github.io/monopoly/?v=35")
+    version = get_current_html_version()
     try:
         parsed = urllib.parse.urlparse(url)
         params = urllib.parse.parse_qs(parsed.query)
-        params['v'] = ["35"]
+        params['v'] = [version]
         new_query = urllib.parse.urlencode(params, doseq=True)
         return urllib.parse.urlunparse((
             parsed.scheme,
