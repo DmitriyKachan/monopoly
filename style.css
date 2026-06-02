@@ -2204,13 +2204,13 @@ input:checked + .slider:before {
     box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
 }
 
-.light-theme .board-cell {
+.light-theme .cell {
     background-color: hsl(0, 0%, 100%);
     border: 1.5px solid hsl(220, 10%, 83%);
     color: hsl(220, 30%, 10%);
 }
 
-.light-theme .board-cell:hover {
+.light-theme .cell:hover {
     background-color: hsl(220, 10%, 98%);
 }
 
@@ -2767,6 +2767,11 @@ input:checked + .slider:before {
     text-shadow: 0 0 5px rgba(239, 68, 68, 0.2), 1.5px 1.5px 0 #0f172a, -1.5px -1.5px 0 #0f172a, 1.5px -1.5px 0 #0f172a, -1.5px 1.5px 0 #0f172a;
 }
 
+.light-theme .board-center-logo .logo-text-bottom {
+    color: #0f172a;
+    text-shadow: 0 0 5px rgba(15, 23, 42, 0.15);
+}
+
 /* Center Trade Container */
 .center-trade-container {
     width: 100%;
@@ -2893,13 +2898,13 @@ input:checked + .slider:before {
 }
 
 /* Trade outer cell highlights */
-.board-cell.trade-highlight-offer {
+.cell.trade-highlight-offer {
     box-shadow: 0 0 12px #10b981, inset 0 0 12px #10b981 !important;
     border: 2px solid #10b981 !important;
     animation: pulse-trade-offer 1.5s infinite;
 }
 
-.board-cell.trade-highlight-request {
+.cell.trade-highlight-request {
     box-shadow: 0 0 12px #f59e0b, inset 0 0 12px #f59e0b !important;
     border: 2px solid #f59e0b !important;
     animation: pulse-trade-request 1.5s infinite;
