@@ -42,14 +42,21 @@ async def run_server():
         await asyncio.Future()  # Бесконечное ожидание
 
 def main():
-    # Тест підключення до Telegram API для діагностики
-    print("Діагностика: Перевірка підключення до api.telegram.org...")
+    # Тест підключення для діагностики
+    import socket
     import urllib.request
-    try:
-        with urllib.request.urlopen("https://api.telegram.org", timeout=5) as response:
-            print(f"Діагностика: Підключення до Telegram успішне! Код статусу: {response.getcode()}")
-    except Exception as e:
-        print(f"Діагностика: Помилка підключення до Telegram: {e}")
+    print("Діагностика: Перевірка мережевої доступності...")
+    for domain in ["google.com", "github.com", "api.telegram.org"]:
+        try:
+            ip = socket.gethostbyname(domain)
+            print(f"Діагностика: DNS {domain} -> {ip}")
+            try:
+                with urllib.request.urlopen(f"https://{domain}", timeout=5) as response:
+                    print(f"Діагностика: HTTPS GET {domain} успішний! Код: {response.getcode()}")
+            except Exception as e:
+                print(f"Діагностика: HTTPS GET {domain} помилка: {e}")
+        except Exception as e:
+            print(f"Діагностика: DNS {domain} помилка: {e}")
 
     # 1. Запускаем Telegram-бота в отдельном демоническом потоке
     bot_thread = threading.Thread(target=run_bot, daemon=True)
