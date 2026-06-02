@@ -12,6 +12,7 @@ let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
 let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
+const tg = window.Telegram?.WebApp;
 let tgId = null;
 const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.has('tg_id')) {
@@ -87,7 +88,7 @@ mp.onPlayerLeftCallback = (name) => {
 const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
 
 // Telegram WebApp Initialization
-const tg = window.Telegram?.WebApp;
+// tg is defined globally at the top
 
 // AdsGram Configuration (Rewarded Video Ads)
 const ADSGRAM_BLOCK_ID = "33680"; 
