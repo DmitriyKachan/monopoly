@@ -283,7 +283,7 @@ def main():
         menu_button_params = {
             "menu_button": {
                 "type": "web_app",
-                "text": "Грати 🏦🎮",
+                "text": "Грати в Монополію 🏦🎮",
                 "web_app": {"url": web_app_url}
             }
         }
