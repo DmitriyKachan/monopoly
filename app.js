@@ -256,8 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Fade out splash screen after 1.5s
     setTimeout(() => {
         if (!hasStartParam) {
-            // Automatically create a private room and enter the lobby on startup
-            createRoomWorkflow(false);
+            switchScreen('screen-menu');
         }
     }, 1500);
 
