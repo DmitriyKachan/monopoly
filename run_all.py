@@ -25,16 +25,28 @@ def run_bot():
 async def http_health_check(*args, **kwargs):
     # Версійно-незалежний обробник для сумісності з websockets 10.x та 11.x+
     path = None
+    is_legacy = True
+    
     if len(args) >= 2:
         first = args[0]
         second = args[1]
         if isinstance(first, str):
             path = first
+            is_legacy = True
         elif hasattr(second, "path"):
             path = second.path
+            is_legacy = False
             
     if path in ["/health", "/health/", "/"]:
-        return http.HTTPStatus.OK, [("Content-Type", "text/plain")], b"OK"
+        if is_legacy:
+            return http.HTTPStatus.OK, [("Content-Type", "text/plain")], b"OK"
+        else:
+            try:
+                from websockets.http11 import Response
+                from websockets.datastructures import Headers
+                return Response(200, "OK", Headers([("Content-Type", "text/plain")]), b"OK")
+            except Exception:
+                return http.HTTPStatus.OK, [("Content-Type", "text/plain")], b"OK"
     return None
 
 async def run_server():
