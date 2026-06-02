@@ -2952,5 +2952,83 @@ input:checked + .slider:before {
     background: rgba(15, 23, 42, 0.05);
 }
 
+/* ==========================================================================
+   SUPPORT/DONATE SUB-TABS STYLING
+   ========================================================================== */
+
+.donate-tab-btn {
+    flex: 1;
+    padding: 0.55rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-family: 'Outfit', sans-serif;
+}
+
+.donate-tab-btn.active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.donate-tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+}
+
+.donate-sub-content {
+    animation: fadeIn 0.3s ease;
+}
+
+.donate-pack-btn {
+    transition: all 0.2s ease;
+}
+
+.donate-pack-btn:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    transform: translateY(-2px);
+}
+
+.donate-pack-btn:active {
+    transform: translateY(0);
+}
+
+/* Light Theme overrides for Donate Sub-tabs */
+.light-theme .donate-tabs {
+    background: rgba(15, 23, 42, 0.04) !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+.light-theme .donate-tab-btn {
+    color: #475569;
+}
+
+.light-theme .donate-tab-btn.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.light-theme .donate-tab-btn:hover:not(.active) {
+    background: rgba(15, 23, 42, 0.02);
+    color: #0f172a;
+}
+
+.light-theme .donate-pack-btn:hover {
+    background: rgba(15, 23, 42, 0.03) !important;
+    border-color: rgba(217, 119, 6, 0.4) !important;
+}
+
+
 
 

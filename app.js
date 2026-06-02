@@ -32,10 +32,7 @@ if (urlParams.has('purchased_frames')) {
 mp.onProfileDataCallback = (data) => {
     userProfile.coins = data.coins;
     userProfile.purchasedFrames = data.purchased_frames;
-    const modalTitle = document.getElementById('modal-title');
-    if (modalTitle && modalTitle.innerText.includes("оформлення")) {
-        showFrameShopModal();
-    }
+    syncDonateShop();
 };
 
 mp.onInvoiceLinkCallback = (data) => {
@@ -48,7 +45,7 @@ mp.onInvoiceLinkCallback = (data) => {
                     mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId }));
                 }
             } else {
-                showFrameShopModal();
+                syncDonateShop();
             }
         });
     }
@@ -63,9 +60,10 @@ mp.onBuyFrameSuccessCallback = (data) => {
     userProfile.frame = data.frame_id;
     localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
     updateUserAvatarFrames();
+    syncDonateShop();
     syncProfileTab();
     showModal("Успішна покупка! 🎉", "<p>Ви придбали та одягли рамку!</p>", [
-        { text: "Клас!", class: "btn-primary", onClick: showFrameShopModal }
+        { text: "Клас!", class: "btn-primary" }
     ]);
 };
 
@@ -230,7 +228,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Setup Frames Shop button
     const shopBtn = document.getElementById('btn-open-shop');
     if (shopBtn) {
-        shopBtn.onclick = showFrameShopModal;
+        shopBtn.onclick = () => {
+            const supportTabBtn = document.querySelector('.menu-nav-bar .nav-item[data-tab="support"]');
+            if (supportTabBtn) supportTabBtn.click();
+            
+            const framesSubTabBtn = document.querySelector('.donate-tab-btn[data-subtab="shop-frames"]');
+            if (framesSubTabBtn) framesSubTabBtn.click();
+        };
     }
 
     // Set callback for player HUD trading clicks
@@ -2097,6 +2101,36 @@ function setupMenuTabs() {
             if (targetTab === 'profile') {
                 syncProfileTab();
             }
+            // Sync support/donate details if tab is support
+            if (targetTab === 'support') {
+                syncDonateShop();
+                if (tgId) {
+                    ensureWsConnected(() => {
+                        mp.socket.send(JSON.stringify({
+                            type: "get_profile",
+                            tg_id: tgId
+                        }));
+                    });
+                }
+            }
+        });
+    });
+
+    // Setup support sub-tabs switching
+    const subTabBtns = document.querySelectorAll('.donate-tab-btn');
+    const subTabContents = document.querySelectorAll('.donate-sub-content');
+    
+    subTabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const targetSub = btn.getAttribute('data-subtab');
+            
+            subTabBtns.forEach(b => b.classList.remove('active'));
+            subTabContents.forEach(c => c.style.display = 'none');
+            
+            btn.classList.add('active');
+            const targetContent = document.getElementById(`subtab-${targetSub}`);
+            if (targetContent) targetContent.style.display = 'block';
         });
     });
 }
@@ -2322,87 +2356,14 @@ window.closeLoaderModal = () => {
 };
 
 function showFrameShopModal() {
-    let purchased = userProfile.purchasedFrames || [];
-    let activeFrame = userProfile.frame;
-
-    let listHtml = `<div class="shop-modal-container" style="color: var(--text-primary);">
-        <p style="font-size: 0.82rem; color: var(--text-secondary); text-align: center; margin-bottom: 0.75rem; line-height: 1.4;">
-            Придбайте унікальні анімовані рамки для вашого аватара за Моно-Коїни 🪙.
-        </p>
-        
-        <!-- Premium Balance display -->
-        <div style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.04); padding: 0.6rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid var(--border-glass);">
-            <span style="font-size: 0.95rem; font-weight: 700;">Ваш баланс: <span class="text-yellow">🪙 ${userProfile.coins}</span></span>
-        </div>
-
-        <div class="shop-card-list">
-    `;
-
-    FRAME_ITEMS.forEach(item => {
-        const isPurchased = purchased.includes(item.id);
-        const isActive = activeFrame === item.id;
-        
-        let actionBtnHtml = '';
-        if (isActive) {
-            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Екіпіровано</button>`;
-        } else if (isPurchased) {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
-        } else {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="window.purchaseFrame('${item.id}')">Купити 🪙${item.price}</button>`;
-        }
-
-        listHtml += `
-            <div class="shop-card-item ${isActive ? 'active-frame' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; margin-bottom: 0.5rem; border: 1px solid var(--border-glass);">
-                <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="avatar-container ${item.class}" style="width: 46px; height: 46px; flex-shrink: 0;">
-                        <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
-                    </div>
-                    <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
-                        <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
-                        <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
-                    </div>
-                </div>
-                <div>
-                    ${actionBtnHtml}
-                </div>
-            </div>
-        `;
-    });
-
-    listHtml += `
-        </div>
-        
-        <!-- Buy premium coins packages -->
-        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 0.75rem; margin-top: 1rem;">
-            <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; text-align: center; color: var(--color-yellow);">Придбати Моно-Коїни за Stars ⭐️</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_50')">
-                    <span style="font-weight: 700;">🪙 50</span>
-                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 50</span>
-                </button>
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_120')">
-                    <span style="font-weight: 700;">🪙 120</span>
-                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 100</span>
-                </button>
-                <button class="btn btn-secondary" style="padding: 0.4rem; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; border: none; background: rgba(255,255,255,0.05); cursor: pointer;" onclick="window.buyCoinsPack('pack_300')">
-                    <span style="font-weight: 700;">🪙 300</span>
-                    <span style="font-size: 0.65rem; color: var(--color-yellow);">⭐️ 200</span>
-                </button>
-            </div>
-        </div>
-
-        ${activeFrame ? `<button class="btn btn-secondary" style="width: 100%; margin-top: 1rem; padding: 0.5rem; font-size: 0.8rem;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : ''}
-    </div>`;
-
-    showModal("Крамниця оформлення 👑", listHtml, [{ text: "Закрити", class: "btn-secondary" }]);
-
-    if (tgId) {
-        ensureWsConnected(() => {
-            mp.socket.send(JSON.stringify({
-                type: "get_profile",
-                tg_id: tgId
-            }));
-        });
+    // Redirect to Support tab and activate Frames sub-tab
+    const supportTabBtn = document.querySelector('.menu-nav-bar .nav-item[data-tab="support"]');
+    if (supportTabBtn) {
+        supportTabBtn.click();
+    }
+    const framesSubTabBtn = document.querySelector('.donate-tab-btn[data-subtab="shop-frames"]');
+    if (framesSubTabBtn) {
+        framesSubTabBtn.click();
     }
 }
 
@@ -2425,7 +2386,7 @@ window.equipFrame = (frameId) => {
     userProfile.frame = frameId;
     localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
     updateUserAvatarFrames();
-    showFrameShopModal();
+    syncDonateShop();
     syncProfileTab();
 };
 
@@ -2446,4 +2407,63 @@ window.purchaseFrame = (frameId) => {
         }));
     });
 };
+
+// Dynamic Donate/Support Shop Synchronizer
+function syncDonateShop() {
+    const coinsEl = document.getElementById('donate-coins-balance');
+    const framesEl = document.getElementById('donate-frames-balance');
+    const balance = userProfile.coins || 0;
+    
+    if (coinsEl) coinsEl.innerText = `🪙 ${balance}`;
+    if (framesEl) framesEl.innerText = `🪙 ${balance}`;
+    
+    renderDonateFramesList();
+}
+
+function renderDonateFramesList() {
+    const listEl = document.getElementById('donate-frames-list');
+    if (!listEl) return;
+    
+    let purchased = userProfile.purchasedFrames || [];
+    let activeFrame = userProfile.frame;
+    
+    let html = '';
+    FRAME_ITEMS.forEach(item => {
+        const isPurchased = purchased.includes(item.id);
+        const isActive = activeFrame === item.id;
+        
+        let actionBtnHtml = '';
+        if (isActive) {
+            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;">Екіпіровано</button>`;
+        } else if (isPurchased) {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
+        } else {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.purchaseFrame('${item.id}')">Купити 🪙${item.price}</button>`;
+        }
+
+        html += `
+            <div class="shop-card-item ${isActive ? 'active-frame' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; border: 1px solid var(--border-glass);">
+                <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div class="avatar-container ${item.class}" style="width: 46px; height: 46px; flex-shrink: 0;">
+                        <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+                    </div>
+                    <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
+                        <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
+                        <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
+                    </div>
+                </div>
+                <div>
+                    ${actionBtnHtml}
+                </div>
+            </div>
+        `;
+    });
+    listEl.innerHTML = html;
+    
+    // Unequip container
+    const unequipEl = document.getElementById('donate-unequip-container');
+    if (unequipEl) {
+        unequipEl.innerHTML = activeFrame ? `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : '';
+    }
+}
 
