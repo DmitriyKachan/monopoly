@@ -22,9 +22,18 @@ def run_bot():
     except Exception as e:
         print(f"❌ Ошибка в работе Telegram-бота: {e}")
 
-async def http_health_check(path, request_headers):
-    # Обрабатываем обычные HTTP-запросы для пинга против засыпания
-    if path == "/health" or path == "/":
+async def http_health_check(*args, **kwargs):
+    # Версійно-незалежний обробник для сумісності з websockets 10.x та 11.x+
+    path = None
+    if len(args) >= 2:
+        first = args[0]
+        second = args[1]
+        if isinstance(first, str):
+            path = first
+        elif hasattr(second, "path"):
+            path = second.path
+            
+    if path in ["/health", "/health/", "/"]:
         return http.HTTPStatus.OK, [("Content-Type", "text/plain")], b"OK"
     return None
 
