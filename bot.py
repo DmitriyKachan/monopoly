@@ -334,7 +334,7 @@ def main():
                                             print(f"Успішне нарахування {coins_to_add} коїнів користувачу {pay_user_id}")
                                         else:
                                             print(f"Помилка збереження БД при нарахуванні {coins_to_add} коїнів користувачу {pay_user_id}!")
-                                catch Exception as e:
+                                except Exception as e:
                                     print(f"Помилка обробки платежу {payload}: {e}")
                             continue
 
