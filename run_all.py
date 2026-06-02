@@ -42,6 +42,15 @@ async def run_server():
         await asyncio.Future()  # Бесконечное ожидание
 
 def main():
+    # Тест підключення до Telegram API для діагностики
+    print("Діагностика: Перевірка підключення до api.telegram.org...")
+    import urllib.request
+    try:
+        with urllib.request.urlopen("https://api.telegram.org", timeout=5) as response:
+            print(f"Діагностика: Підключення до Telegram успішне! Код статусу: {response.getcode()}")
+    except Exception as e:
+        print(f"Діагностика: Помилка підключення до Telegram: {e}")
+
     # 1. Запускаем Telegram-бота в отдельном демоническом потоке
     bot_thread = threading.Thread(target=run_bot, daemon=True)
     bot_thread.start()

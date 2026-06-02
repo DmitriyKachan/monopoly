@@ -171,7 +171,7 @@ def api_request(token, method, params=None):
     req = urllib.request.Request(url, data=data, headers=headers, method='POST' if data else 'GET')
     
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode('utf-8'))
     except urllib.error.HTTPError as e:
         try:
