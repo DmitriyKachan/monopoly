@@ -12,6 +12,9 @@ let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
 let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
+const BOT_USERNAME = "queuecomfybot";
+const MINI_APP_SHORT_NAME = null; // Замените на короткое имя (Short Name) вашего Mini App в BotFather (например, "play" или "app") для мгновенного входа без кнопки Старт
+
 const tg = window.Telegram?.WebApp;
 let tgId = null;
 const urlParams = new URLSearchParams(window.location.search);
@@ -348,8 +351,9 @@ function createRoomWorkflow(autoShare = false) {
 
         if (autoShare && mp.roomCode && !shareLinkOpened) {
             shareLinkOpened = true;
-            const botUsername = "queuecomfybot";
-            const shareUrl = `https://t.me/${botUsername}?start=${mp.roomCode}`;
+            const shareUrl = MINI_APP_SHORT_NAME 
+                ? `https://t.me/${BOT_USERNAME}/${MINI_APP_SHORT_NAME}?startapp=${mp.roomCode}`
+                : `https://t.me/${BOT_USERNAME}?start=${mp.roomCode}`;
             const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
             const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
@@ -488,8 +492,9 @@ function setupMenuHandlers() {
     if (btnLobbyInvite) {
         btnLobbyInvite.addEventListener('click', () => {
             if (mp.roomCode) {
-                const botUsername = "queuecomfybot";
-                const shareUrl = `https://t.me/${botUsername}?start=${mp.roomCode}`;
+                const shareUrl = MINI_APP_SHORT_NAME 
+                    ? `https://t.me/${BOT_USERNAME}/${MINI_APP_SHORT_NAME}?startapp=${mp.roomCode}`
+                    : `https://t.me/${BOT_USERNAME}?start=${mp.roomCode}`;
                 const shareText = `Приєднуйся до моєї гри в українську Монополію! 🇺🇦🏦 Код кімнати: ${mp.roomCode}`;
                 const telegramShareLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
 
