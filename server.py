@@ -267,6 +267,7 @@ async def handle_connection(websocket):
                             "message": "Не вдалося згенерувати посилання на оплату. Спробуйте пізніше."
                         }))
 
+
             elif msg_type == "create":
                 # Create a new room
                 room_code = str(random.randint(1000, 9999))

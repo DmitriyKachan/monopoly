@@ -127,14 +127,14 @@ def load_config():
     if env_token:
         return {
             "telegram_token": env_token,
-            "web_app_url": env_web_url or "https://dmitriykachan.github.io/monopoly/?v=32",
+            "web_app_url": env_web_url or "https://dmitriykachan.github.io/monopoly/?v=33",
             "ws_server_url": env_ws_url or "wss://jiubehb-monopoly-backend.hf.space"
         }
 
     if not os.path.exists(CONFIG_FILE):
         config = {
             "telegram_token": DEFAULT_TOKEN,
-            "web_app_url": "https://dmitriykachan.github.io/monopoly/?v=32",
+            "web_app_url": "https://dmitriykachan.github.io/monopoly/?v=33",
             "ws_server_url": "wss://jiubehb-monopoly-backend.hf.space"
         }
         with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
@@ -143,6 +143,25 @@ def load_config():
     
     with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
+
+def get_clean_web_app_url():
+    config = load_config()
+    url = config.get("web_app_url", "https://dmitriykachan.github.io/monopoly/?v=33")
+    try:
+        parsed = urllib.parse.urlparse(url)
+        params = urllib.parse.parse_qs(parsed.query)
+        params['v'] = ["33"]
+        new_query = urllib.parse.urlencode(params, doseq=True)
+        return urllib.parse.urlunparse((
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment
+        ))
+    except Exception:
+        return url
 
 def api_request(token, method, params=None):
     url = f"https://api.telegram.org/bot{token}/{method}"
@@ -217,7 +236,7 @@ def post_changelog(token, chat_id, web_app_url):
 def main():
     config = load_config()
     token = config.get("telegram_token")
-    web_app_url = config.get("web_app_url")
+    web_app_url = get_clean_web_app_url()
     ws_server_url = config.get("ws_server_url", "")
     
     if ws_server_url:
@@ -368,7 +387,7 @@ def main():
                             # Load config dynamically to read updated ws_server_url without restart
                             try:
                                 dynamic_config = load_config()
-                                dynamic_web_app_url = dynamic_config.get("web_app_url")
+                                dynamic_web_app_url = get_clean_web_app_url()
                                 dynamic_ws_server_url = dynamic_config.get("ws_server_url", "")
                                 
                                 # Автоматический сброс кэша по timestamp
@@ -411,7 +430,12 @@ def main():
                                 dynamic_web_app_url = f"{dynamic_web_app_url}&tg_id={chat_id}&coins={wallet_coins}&purchased_frames={wallet_frames}"
                             except Exception as e:
                                 print(f"Помилка при читанні конфігурації: {e}")
-                                dynamic_web_app_url = f"{web_app_url}&t={int(time.time())}" if "?" in web_app_url else f"{web_app_url}?t={int(time.time())}"
+                                dynamic_web_app_url = get_clean_web_app_url()
+                                cache_bust = f"t={int(time.time())}"
+                                if "?" in dynamic_web_app_url:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}&{cache_bust}"
+                                else:
+                                    dynamic_web_app_url = f"{dynamic_web_app_url}?{cache_bust}"
                                 if room_code and len(room_code) == 4:
                                     dynamic_web_app_url = f"{dynamic_web_app_url}&tgWebAppStartParam={room_code}"
                             
@@ -501,7 +525,7 @@ def main():
                                         "parse_mode": "Markdown"
                                     })
 
-                                post_changelog(token, chat_id, config.get("web_app_url"))
+                                post_changelog(token, chat_id, get_clean_web_app_url())
                             else:
                                 api_request(token, "sendMessage", {
                                     "chat_id": chat_id,
@@ -528,8 +552,7 @@ def main():
                                         api_request(token, "deleteMessage", {"chat_id": chat_id, "message_id": msg["message_id"]})
                                     except Exception:
                                         pass
-                                config = load_config()
-                                post_changelog(token, chat_id, config.get("web_app_url"))
+                                post_changelog(token, chat_id, get_clean_web_app_url())
                             else:
                                 api_request(token, "sendMessage", {
                                     "chat_id": chat_id,
@@ -538,7 +561,6 @@ def main():
 
                         elif text.startswith("/broadcast_changelog"):
                             user_id = user.get("id") if user else None
-                            config = load_config()
                             db = db_load() or {}
                             channel_chat_id = db.get("telegram_chat_id")
                             
@@ -577,7 +599,7 @@ def main():
                                 success_count = 0
                                 for u_id in users:
                                     try:
-                                        res = post_changelog(token, u_id, config.get("web_app_url"))
+                                        res = post_changelog(token, u_id, get_clean_web_app_url())
                                         if res and res.get("ok"):
                                             success_count += 1
                                         time.sleep(0.05) # Лимиты Telegram API
