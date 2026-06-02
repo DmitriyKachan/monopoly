@@ -10,6 +10,7 @@ import { MultiplayerManager } from './multiplayer.js';
 let game = new GameState();
 let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
+let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
 let tgId = null;
 const urlParams = new URLSearchParams(window.location.search);
@@ -83,8 +84,6 @@ mp.onPlayerLeftCallback = (name) => {
         renderPlayersHUD(game);
     }
 };
-
-let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
 // Ссылка на вашу банку Монобанка для донатов (замените YOUR_JAR_ID на ваш ID банки)
 const DONATE_URL = "https://send.monobank.ua/jar/2rhzs3ebtE";
