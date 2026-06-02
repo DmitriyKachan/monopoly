@@ -19,4 +19,4 @@ ENV PORT=7860
 EXPOSE 7860
 
 # Запуск единого скрипта (сервер + бот)
-CMD ["python", "run_all.py"]
+CMD ["python", "-u", "run_all.py"]
