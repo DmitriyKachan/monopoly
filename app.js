@@ -13,7 +13,7 @@ const mp = new MultiplayerManager();
 let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
 
 const BOT_USERNAME = "queuecomfybot";
-const MINI_APP_SHORT_NAME = null; // Замените на короткое имя (Short Name) вашего Mini App в BotFather (например, "play" или "app") для мгновенного входа без кнопки Старт
+const MINI_APP_SHORT_NAME = "play"; // Замените на короткое имя (Short Name) вашего Mini App в BotFather (например, "play" или "app") для мгновенного входа без кнопки Старт
 
 const tg = window.Telegram?.WebApp;
 let tgId = null;
