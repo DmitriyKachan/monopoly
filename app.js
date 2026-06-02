@@ -101,7 +101,6 @@ let activeAdTimeout = null;
 // 1. Host is localhost/127.0.0.1 (local testing)
 // 2. URL query contains "debug_ad=true" or "debug=true"
 // 3. Platform is desktop/web or we are outside native Telegram mobile (to prevent no-fill errors on PC)
-const urlParams = new URLSearchParams(window.location.search);
 const isDebugAd = urlParams.has('debug_ad') || 
                   urlParams.get('debug') === 'true' || 
                   window.location.hostname === 'localhost' || 
