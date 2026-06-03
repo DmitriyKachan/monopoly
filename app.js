@@ -1022,9 +1022,14 @@ function handlePlayerClick(clickedPlayerId) {
     const receiver = game.players.find(p => p.id === clickedPlayerId);
     if (!proposer || !receiver || proposer.isBankrupt || receiver.isBankrupt) return;
 
-    // Filter properties, stations, utilities owned by proposer/receiver
-    const proposerProps = game.spaces.filter(s => s.owner === localPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY));
-    const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY));
+    // Filter properties, stations, utilities owned by proposer/receiver, excluding groups with branches built
+    const hasGroupBranches = (space) => {
+        if (!space.group) return (space.branches || 0) > 0;
+        const groupSpaces = game.spaces.filter(s => s.group === space.group);
+        return groupSpaces.some(s => s.branches > 0);
+    };
+    const proposerProps = game.spaces.filter(s => s.owner === localPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY) && !hasGroupBranches(s));
+    const receiverProps = game.spaces.filter(s => s.owner === clickedPlayerId && (s.type === SPACE_TYPES.PROPERTY || s.type === SPACE_TYPES.STATION || s.type === SPACE_TYPES.UTILITY) && !hasGroupBranches(s));
 
     let centerTradeHtml = `
         <div class="center-trade-container">
@@ -1102,6 +1107,28 @@ function handlePlayerClick(clickedPlayerId) {
     }
 }
 
+function enableNextTurnButton() {
+    const rollBtn = document.getElementById('btn-roll-dice');
+    const endTurnBtn = document.getElementById('btn-end-turn');
+    const activePlayer = game.getCurrentPlayer();
+    
+    // Check if it's the local user's turn
+    const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
+    if (activePlayer.id !== localPlayerId) {
+        rollBtn.disabled = true;
+        endTurnBtn.disabled = true;
+        return;
+    }
+    
+    if (game.rolledDouble && !activePlayer.inJail && !activePlayer.isBankrupt) {
+        rollBtn.disabled = false;
+        endTurnBtn.disabled = true;
+    } else {
+        rollBtn.disabled = true;
+        endTurnBtn.disabled = false;
+    }
+}
+
 // User Roll Turn
 function handleUserRoll() {
     const rollBtn = document.getElementById('btn-roll-dice');
@@ -1145,7 +1172,7 @@ function handleUserRoll() {
                         });
                     } else {
                         animateDiceRoll(rollResult.d1, rollResult.d2, () => {
-                            document.getElementById('btn-end-turn').disabled = false;
+                            enableNextTurnButton();
                         });
                     }
                 }
@@ -1155,11 +1182,42 @@ function handleUserRoll() {
     }
 
     // Normal Roll
-    const { d1, d2, sum } = game.rollDice();
+    const startedInJail = activePlayer.inJail;
+    const { d1, d2, sum, isDouble } = game.rollDice();
     game.log(`${activePlayer.name} кинув кубики: ${d1}:${d2}`, 'system');
     
     if (isMultiplayerGame) {
         mp.sendAction({ type: 'roll', d1, d2, sum });
+    }
+
+    // Doubles check
+    if (isDouble && !startedInJail) {
+        game.consecutiveDoubles++;
+        if (game.consecutiveDoubles === 3) {
+            game.consecutiveDoubles = 0;
+            game.rolledDouble = false;
+            game.log(`🚨 3 дублі підряд! ${activePlayer.name} відправляється в Тюрму.`, 'system');
+            
+            game.sendToJail(activePlayer.id);
+            if (isMultiplayerGame) {
+                mp.sendAction({ type: 'go_to_jail', playerId: activePlayer.id });
+            }
+            
+            animateDiceRoll(d1, d2, () => {
+                updatePlayerTokens(game);
+                renderPlayersHUD(game);
+                updateGameLog(game);
+                const endTurnBtn = document.getElementById('btn-end-turn');
+                endTurnBtn.disabled = false;
+            });
+            return;
+        } else {
+            game.rolledDouble = true;
+            game.log(`🎲 Дубль (${d1}:${d2})! ${activePlayer.name} отримує право на ще один кидок.`, 'gain');
+        }
+    } else {
+        game.consecutiveDoubles = 0;
+        game.rolledDouble = false;
     }
 
     const fromPos = activePlayer.position;
@@ -1177,7 +1235,6 @@ function handleUserRoll() {
 function resolveLandingSpace(playerId, spaceId, diceSum) {
     const player = game.players.find(p => p.id === playerId);
     const space = game.spaces[spaceId];
-    const endTurnBtn = document.getElementById('btn-end-turn');
 
     if (space.type === SPACE_TYPES.PROPERTY || space.type === SPACE_TYPES.STATION || space.type === SPACE_TYPES.UTILITY) {
         if (space.owner === null) {
@@ -1201,12 +1258,12 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
                     } else {
                         alert("Недостатньо коштів для придбання компанії!");
                     }
-                    endTurnBtn.disabled = false;
+                    enableNextTurnButton();
                 },
                 () => {
                     game.log(`${player.name} відмовився купувати ${space.name}`);
                     updateGameLog(game);
-                    endTurnBtn.disabled = false;
+                    enableNextTurnButton();
                 }
             );
         } else if (space.owner !== playerId) {
@@ -1227,19 +1284,11 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
                     resolveUserDebt(playerId, rent);
                 }
             } else {
-                if (isMultiplayerGame) {
-                    if (playerId === mp.playerId) endTurnBtn.disabled = false;
-                } else {
-                    endTurnBtn.disabled = false;
-                }
+                enableNextTurnButton();
             }
         } else {
             // Own property landed
-            if (isMultiplayerGame) {
-                if (playerId === mp.playerId) endTurnBtn.disabled = false;
-            } else {
-                endTurnBtn.disabled = false;
-            }
+            enableNextTurnButton();
         }
     } else if (space.type === SPACE_TYPES.FREE_PARKING) {
         const claimed = game.claimFreeParking(playerId);
@@ -1254,11 +1303,7 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
         }
         renderPlayersHUD(game);
         updateGameLog(game);
-        if (isMultiplayerGame) {
-            if (playerId === mp.playerId) endTurnBtn.disabled = false;
-        } else {
-            endTurnBtn.disabled = false;
-        }
+        enableNextTurnButton();
     } else if (space.type === SPACE_TYPES.GO_TO_JAIL) {
         game.sendToJail(playerId);
         if (isMultiplayerGame && playerId === mp.playerId) {
@@ -1267,11 +1312,7 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
         updatePlayerTokens(game);
         renderPlayersHUD(game);
         updateGameLog(game);
-        if (isMultiplayerGame) {
-            if (playerId === mp.playerId) endTurnBtn.disabled = false;
-        } else {
-            endTurnBtn.disabled = false;
-        }
+        enableNextTurnButton();
     } else if (space.type === SPACE_TYPES.CHANCE) {
         if (isMultiplayerGame) {
             if (playerId === mp.playerId) {
@@ -1289,11 +1330,7 @@ function resolveLandingSpace(playerId, spaceId, diceSum) {
             });
         }
     } else {
-        if (isMultiplayerGame) {
-            if (playerId === mp.playerId) endTurnBtn.disabled = false;
-        } else {
-            endTurnBtn.disabled = false;
-        }
+        enableNextTurnButton();
     }
 }
 
@@ -1343,11 +1380,7 @@ function applyChanceCardAction(playerId, card) {
             resolveUserDebt(playerId, 0);
         }
     } else {
-        if (isMultiplayerGame) {
-            if (playerId === mp.playerId) endTurnBtn.disabled = false;
-        } else {
-            endTurnBtn.disabled = false;
-        }
+        enableNextTurnButton();
     }
 }
 
@@ -1401,7 +1434,7 @@ function resolveUserDebt(playerId, rentAmount) {
                 onClick: () => {
                     renderPlayersHUD(game);
                     updateGameLog(game);
-                    endTurnBtn.disabled = false;
+                    enableNextTurnButton();
                 }
             });
         } else {
@@ -1427,7 +1460,7 @@ function resolveUserDebt(playerId, rentAmount) {
                     if (game.isGameOver) {
                         triggerGameOver(game.rankings);
                     } else {
-                        endTurnBtn.disabled = false;
+                        enableNextTurnButton();
                     }
                 }
             });
@@ -1567,9 +1600,34 @@ function executeBotRoll() {
     const bot = game.getCurrentPlayer();
     if (!bot || !bot.isBot || bot.isBankrupt) return;
 
-    const { d1, d2, sum } = game.rollDice();
+    const startedInJail = bot.inJail;
+    const { d1, d2, sum, isDouble } = game.rollDice();
     game.log(`${bot.name} кинув кубики: ${d1}:${d2}`, 'system');
     
+    // Doubles logic
+    if (isDouble && !startedInJail) {
+        game.consecutiveDoubles++;
+        if (game.consecutiveDoubles === 3) {
+            game.consecutiveDoubles = 0;
+            game.rolledDouble = false;
+            game.log(`🚨 3 дублі підряд! ${bot.name} відправляється в Тюрму.`, 'system');
+            
+            game.sendToJail(bot.id);
+            animateDiceRoll(d1, d2, () => {
+                updatePlayerTokens(game);
+                renderPlayersHUD(game);
+                updateGameLog(game);
+                setTimeout(executeBotEndTurn, 1500);
+            });
+            return;
+        } else {
+            game.rolledDouble = true;
+        }
+    } else {
+        game.consecutiveDoubles = 0;
+        game.rolledDouble = false;
+    }
+
     const fromPos = bot.position;
     game.movePlayer(bot.id, sum);
 
@@ -1650,7 +1708,13 @@ function executeBotUpgradesAndEnd() {
         }
     }
 
-    executeBotEndTurn();
+    if (game.rolledDouble && !bot.inJail && !bot.isBankrupt) {
+        game.log(`🎲 Робот ${bot.name} викинув дубль і кидає ще раз!`);
+        updateGameLog(game);
+        setTimeout(runBotTurn, 1500);
+    } else {
+        executeBotEndTurn();
+    }
 }
 
 function executeBotEndTurn() {
@@ -1727,8 +1791,34 @@ function handleRemoteAction(action) {
 
     switch (action.type) {
         case 'roll':
+            const isDouble = action.d1 === action.d2;
+            const startedInJail = player.inJail;
+            
             game.log(`${player.name} кинув кубики: ${action.d1}:${action.d2}`, 'system');
             const fromPos = player.position;
+            
+            // Replicate double roll rules on remote clients
+            if (isDouble && !startedInJail) {
+                game.consecutiveDoubles++;
+                if (game.consecutiveDoubles === 3) {
+                    game.consecutiveDoubles = 0;
+                    game.rolledDouble = false;
+                    game.log(`🚨 3 дублі підряд! ${player.name} відправляється в Тюрму.`, 'system');
+                    game.sendToJail(playerId);
+                    animateDiceRoll(action.d1, action.d2, () => {
+                        updatePlayerTokens(game);
+                        renderPlayersHUD(game);
+                        updateGameLog(game);
+                    });
+                    break;
+                } else {
+                    game.rolledDouble = true;
+                }
+            } else {
+                game.consecutiveDoubles = 0;
+                game.rolledDouble = false;
+            }
+            
             game.movePlayer(playerId, action.sum);
             animateDiceRoll(action.d1, action.d2, () => {
                 animatePlayerMovement(game, playerId, fromPos, action.sum, () => {
@@ -1778,7 +1868,7 @@ function handleRemoteAction(action) {
                     if (res.forced) {
                         player.money -= 500;
                         game.freeParkingCash += 500;
-                        game.log(`${player.name} відбув термін 2 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
+                        game.log(`${player.name} відбув термін 3 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
                     } else {
                         game.log(`${player.name} викинув дубль (${res.d1}:${res.d2}) та вийшов з тюрми безкоштовно!`, 'gain');
                     }

@@ -627,7 +627,7 @@ body {
     max-width: 380px;
     background: #0f172a;
     border-radius: 12px;
-    padding: 6px;
+    padding: 4px;
     border: 2px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 87, 183, 0.15);
     overflow: hidden; /* Prevent cell elements from bleeding out at corners/bottom */
@@ -654,7 +654,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 3px;
+    padding: 2px;
     overflow: hidden;
     transition: box-shadow 0.2s ease, filter 0.2s ease;
     min-height: 0;
@@ -689,13 +689,13 @@ body {
 
 /* Cell Content details */
 .cell-color-bar {
-    height: 5px;
-    width: calc(100% + 6px);
-    margin: -3px -3px 0 -3px;
+    height: 4px;
+    width: calc(100% + 4px);
+    margin: -2px -2px 0 -2px;
 }
 
 .cell-name {
-    font-size: 0.55rem;
+    font-size: 0.52rem;
     font-weight: 700;
     line-height: 1.1;
     text-align: center;
@@ -707,9 +707,9 @@ body {
 }
 
 .cell-logo {
-    width: 22px;
-    height: 22px;
-    margin: 2px auto;
+    width: 18px;
+    height: 18px;
+    margin: 1px auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -760,7 +760,7 @@ body {
 }
 
 .cell-price {
-    font-size: 0.5rem;
+    font-size: 0.48rem;
     color: var(--color-yellow);
     font-weight: 600;
     text-align: center;
@@ -768,10 +768,10 @@ body {
 
 .cell-owner-indicator {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
-    width: 9px;
-    height: 9px;
+    bottom: 3px;
+    right: 3px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     border: 1px solid #ffffff;
     box-shadow: 0 0 4px currentColor;
@@ -782,12 +782,12 @@ body {
     justify-content: center;
     gap: 2px;
     margin-top: 1px;
-    height: 7px;
+    height: 5px;
 }
 
 .cell-branch-dot {
-    width: 7px;
-    height: 7px;
+    width: 5px;
+    height: 5px;
     background: var(--color-yellow);
     border-radius: 2px;
     box-shadow: 0 0 2px var(--color-yellow);

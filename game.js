@@ -237,6 +237,8 @@ export class GameState {
         this.maxTurns = 20; // limit for quick sessions
         this.isGameOver = false;
         this.logs = [];
+        this.consecutiveDoubles = 0;
+        this.rolledDouble = false;
     }
 
     addPlayer(name, colorClass, avatar, isBot = false, tokenSkin = '') {
@@ -266,6 +268,8 @@ export class GameState {
 
         // Loop to find next non-bankrupt player
         let originalIndex = this.currentPlayerIndex;
+        this.consecutiveDoubles = 0;
+        this.rolledDouble = false;
         do {
             this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
             if (this.currentPlayerIndex === 0) {
@@ -348,6 +352,10 @@ export class GameState {
         const anyMortgaged = sameGroupSpaces.some(s => s.isMortgaged);
         if (anyMortgaged) return false;
 
+        // Check if building evenly
+        const minBranches = Math.min(...sameGroupSpaces.map(s => s.branches));
+        if (space.branches > minBranches) return false;
+
         player.money -= space.branchCost;
         space.branches++;
         this.log(`${player.name} побудував філію на ${space.name} за ₴${space.branchCost}`, 'gain');
@@ -386,8 +394,10 @@ export class GameState {
         }
 
         if (space.type === SPACE_TYPES.UTILITY) {
-            // 100x dice sum
-            return diceSum * space.multiplier;
+            // 100x dice sum, scaled if owner also owns UZ station
+            const stations = this.spaces.filter(s => s.type === SPACE_TYPES.STATION && s.owner === ownerId);
+            const mult = stations.length > 0 ? space.multiplier * 2 : space.multiplier;
+            return diceSum * mult;
         }
 
         return 0;
@@ -466,13 +476,13 @@ export class GameState {
             } else {
                 player.jailTurns++;
                 this.log(`${player.name} кинув кубики (${d1}:${d2}) та не викинув дубль. Залишається в тюрмі`, 'system');
-                if (player.jailTurns >= 2) {
-                    // Forced out after 2 turns by paying
+                if (player.jailTurns >= 3) {
+                    // Forced out after 3 turns by paying
                     player.money -= 500;
                     this.freeParkingCash += 500;
                     player.inJail = false;
                     player.jailTurns = 0;
-                    this.log(`${player.name} відбув термін 2 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
+                    this.log(`${player.name} відбув термін 3 ходи, сплатив автоматичний штраф ₴500 і вийшов з тюрми`, 'gain');
                     this.movePlayer(playerId, sum);
                     return { success: true, d1, d2, sum, forced: true };
                 }
@@ -509,6 +519,14 @@ export class GameState {
         if (!owner) return false;
 
         const sellValue = Math.floor(space.branchCost * 0.5); // Sell for half value
+        
+        // Check if selling evenly
+        if (space.group) {
+            const sameGroupSpaces = this.spaces.filter(s => s.group === space.group);
+            const maxBranches = Math.max(...sameGroupSpaces.map(s => s.branches));
+            if (space.branches < maxBranches) return false;
+        }
+
         space.branches--;
         owner.money += sellValue;
         this.log(`${owner.name} продав філію на ${space.name} за ₴${sellValue}`, 'system');
@@ -627,6 +645,7 @@ export class GameState {
                     this.log(`${beneficiary.name} отримав права на ${s.name}`, 'gain');
                 } else {
                     s.owner = null; // release back to bank
+                    s.isMortgaged = false; // Reset mortgaged status when returning to bank
                 }
             }
         });
