@@ -2,7 +2,7 @@
 // MAIN APP ROUTER & PLAY LOOP - MONOPOLY UKRAINE (SIMPLIFIED MULTIPLAYER ONLY)
 // ==========================================================================
 
-import { GameState, SPACE_TYPES, CHANCE_CARDS } from './game.js';
+import { GameState, SPACE_TYPES, CHANCE_CARDS, COLOR_GROUPS } from './game.js';
 import { renderBoard, updatePlayerTokens, animatePlayerMovement, animateDiceRoll, renderPlayersHUD, updateGameLog, showPropertyModal, showChanceModal, showGameOverModal, showModal, hideModal, setPlayerClickCallback, triggerConfetti, showSpecialSpaceModal } from './ui.js';
 import { MultiplayerManager } from './multiplayer.js';
 
@@ -720,6 +720,12 @@ function startNewGame(playerList) {
 
         const addedPlayer = game.addPlayer(p.name, `p-color-${idx}`, avatarUrl, p.isBot || false);
         addedPlayer.frame = frame; // Expose frame inside the game state!
+        if (p.style) {
+            addedPlayer.style = p.style;
+        } else if (p.isBot) {
+            const styles = ['agressive', 'balanced', 'conservative'];
+            addedPlayer.style = styles[idx % styles.length];
+        }
 
         // Добавляем бонус за просмотр рекламы, если он есть
         if (!p.isBot && p.name === userProfile.name && userProfile.startingBonus) {
@@ -751,6 +757,10 @@ function startNewGame(playerList) {
 // Click on cell shows deed card properties details (restricted to own properties on player's turn)
 // Click on cell shows details (anyone can inspect any cell)
 function handleCellClick(index) {
+    if (game.botTradeActive) {
+        alert("Зараз триває обговорення угоди з роботом! Спочатку прийміть або відхиліть пропозицію.");
+        return;
+    }
     const space = game.spaces[index];
     const localPlayerId = isMultiplayerGame ? mp.playerId : 0; // В синглплеере игрок - 0, в мультиплеере - mp.playerId
 
@@ -884,11 +894,279 @@ function handleCellClick(index) {
 
 // Global functions for Center Board Trade System
 window.closeCenterTrade = () => {
+    game.botTradeActive = false;
+    game.pendingBotTrade = null;
     // Clear highlights on outer cells
     document.querySelectorAll('.cell').forEach(el => {
         el.classList.remove('trade-highlight-offer', 'trade-highlight-request');
     });
     renderBoard(game, handleCellClick);
+};
+
+// Heuristic check: does receiving propertyId complete a monopoly for playerId?
+function completesMonopoly(playerId, propertyId, isReceiving) {
+    if (!propertyId) return false;
+    const space = game.spaces.find(s => s.id === propertyId);
+    if (!space || !space.group) return false;
+    
+    const groupSpaces = game.spaces.filter(s => s.group === space.group);
+    if (isReceiving) {
+        // Will owner own all spaces in the group after receiving this one?
+        const otherSpaces = groupSpaces.filter(s => s.id !== propertyId);
+        return otherSpaces.every(s => s.owner === playerId);
+    }
+    return false;
+}
+
+// Heuristic trade evaluation for bots
+function evaluateBotTrade(proposerId, receiverId, offerProps, offerCash, requestProps, requestCash) {
+    const receiver = game.players.find(p => p.id === receiverId); // the bot
+    const proposer = game.players.find(p => p.id === proposerId); // the player
+    
+    // Value bot gives up (Given)
+    let valueGiven = requestCash;
+    requestProps.forEach(propId => {
+        const space = game.spaces.find(s => s.id === propId);
+        if (space) {
+            let val = space.price;
+            // Check if player completes monopoly by receiving this property
+            if (completesMonopoly(proposerId, propId, true)) {
+                val *= 2.2; // penalty for helping player complete monopoly
+            }
+            valueGiven += val;
+        }
+    });
+    
+    // Value bot receives (Received)
+    let valueReceived = offerCash;
+    offerProps.forEach(propId => {
+        const space = game.spaces.find(s => s.id === propId);
+        if (space) {
+            let val = space.price;
+            // Check if bot completes monopoly by receiving this property
+            if (completesMonopoly(receiverId, propId, true)) {
+                val *= 2.5; // bonus for completing monopoly
+            }
+            valueReceived += val;
+        }
+    });
+    
+    // Determine threshold based on bot style
+    const botProfile = receiver.style || 'balanced';
+    let ratioThreshold = 0.95;
+    if (botProfile === 'agressive' || botProfile === 'aggressive') ratioThreshold = 0.90;
+    if (botProfile === 'conservative') ratioThreshold = 1.05;
+    
+    const accepted = valueReceived >= valueGiven * ratioThreshold;
+    return {
+        accepted,
+        valueReceived,
+        valueGiven,
+        ratioThreshold
+    };
+}
+
+// Check if bot wants to propose a trade proactively
+function checkForBotProactiveTrade(botId) {
+    const bot = game.players.find(p => p.id === botId);
+    const player = game.players.find(p => p.id === 0);
+    if (!bot || bot.isBankrupt || !player || player.isBankrupt) return null;
+
+    // Check color groups
+    const groups = Object.values(COLOR_GROUPS);
+    for (const group of groups) {
+        const groupSpaces = game.spaces.filter(s => s.group === group);
+        if (groupSpaces.length === 2) {
+            const spaceA = groupSpaces[0];
+            const spaceB = groupSpaces[1];
+            
+            // Check if one is owned by bot and one by player, and neither has branches/mortgages
+            const botOwnsA = spaceA.owner === botId;
+            const botOwnsB = spaceB.owner === botId;
+            const playerOwnsA = spaceA.owner === 0;
+            const playerOwnsB = spaceB.owner === 0;
+            
+            if (((botOwnsA && playerOwnsB) || (botOwnsB && playerOwnsA)) && spaceA.branches === 0 && spaceB.branches === 0 && !spaceA.isMortgaged && !spaceB.isMortgaged) {
+                const botProperty = botOwnsA ? spaceA : spaceB;
+                const playerProperty = botOwnsA ? spaceB : spaceA;
+                
+                // Now evaluate whether bot is rich or poor
+                if (bot.money > 2500) {
+                    // Bot wants to BUY the player's property to complete their monopoly
+                    const offerCash = Math.round(playerProperty.price * 1.35);
+                    // Bot must have enough money to actually pay this (price + 500 reserve)
+                    if (bot.money >= offerCash + 500) {
+                        return {
+                            type: 'buy_monopoly',
+                            offerProps: [],
+                            offerCash: offerCash,
+                            requestProps: [playerProperty.id],
+                            requestCash: 0
+                        };
+                    }
+                } else if (bot.money < 1000) {
+                    // Bot is poor, tries to SELL its property to player to raise cash
+                    const requestCash = Math.round(botProperty.price * 0.90);
+                    // Player must have enough cash to pay
+                    if (player.money >= requestCash) {
+                        return {
+                            type: 'sell_property',
+                            offerProps: [botProperty.id],
+                            offerCash: 0,
+                            requestProps: [],
+                            requestCash: requestCash
+                        };
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+// Display proactive bot trade proposal in the center
+function displayBotProactiveTrade(botId, trade) {
+    const bot = game.players.find(p => p.id === botId);
+    const centerEl = document.getElementById('board-center');
+    if (!centerEl) return;
+    
+    let offerHtml = '';
+    if (trade.offerCash > 0) {
+        offerHtml += `<div style="font-size: 0.65rem; color: var(--color-success); font-weight: 700; margin-bottom: 2px;">₴${trade.offerCash}</div>`;
+    }
+    trade.offerProps.forEach(id => {
+        const space = game.spaces[id];
+        offerHtml += `
+            <div class="center-trade-item" style="padding: 2px; font-size: 0.52rem; display: flex; align-items: center; gap: 4px;">
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: var(--prop-${space.group}); display: inline-block;"></span>
+                <span>${space.name}</span>
+            </div>
+        `;
+    });
+    if (!offerHtml) offerHtml = '<span style="color: var(--text-muted); font-size: 0.5rem;">Нічого</span>';
+    
+    let requestHtml = '';
+    if (trade.requestCash > 0) {
+        requestHtml += `<div style="font-size: 0.65rem; color: var(--color-yellow); font-weight: 700; margin-bottom: 2px;">₴${trade.requestCash}</div>`;
+    }
+    trade.requestProps.forEach(id => {
+        const space = game.spaces[id];
+        requestHtml += `
+            <div class="center-trade-item" style="padding: 2px; font-size: 0.52rem; display: flex; align-items: center; gap: 4px;">
+                <span style="width: 5px; height: 5px; border-radius: 50%; background: var(--prop-${space.group}); display: inline-block;"></span>
+                <span>${space.name}</span>
+            </div>
+        `;
+    });
+    if (!requestHtml) requestHtml = '<span style="color: var(--text-muted); font-size: 0.5rem;">Нічого</span>';
+
+    centerEl.innerHTML = `
+        <div class="center-trade-container" style="animation: center-trade-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+            <div class="center-trade-header" style="color: var(--color-primary); border-bottom: 1.5px solid var(--border-glass); padding-bottom: 3px; font-size: 0.72rem;">
+                <span>Пропозиція від ${bot.name}</span>
+            </div>
+            <div class="center-trade-body" style="display: flex; gap: 6px; flex: 1; margin-top: 4px;">
+                <div class="center-trade-column" style="flex: 1; border-right: 1px solid rgba(255,255,255,0.08); padding-right: 3px;">
+                    <h4 style="color: var(--color-success); font-size: 0.58rem; margin: 0 0 2px 0;">Робот пропонує:</h4>
+                    <div class="center-trade-list" style="display: flex; flex-direction: column; gap: 2px;">
+                        ${offerHtml}
+                    </div>
+                </div>
+                <div class="center-trade-column" style="flex: 1; padding-left: 3px;">
+                    <h4 style="color: var(--color-yellow); font-size: 0.58rem; margin: 0 0 2px 0;">Робот хоче:</h4>
+                    <div class="center-trade-list" style="display: flex; flex-direction: column; gap: 2px;">
+                        ${requestHtml}
+                    </div>
+                </div>
+            </div>
+            <div class="center-trade-actions" style="display: flex; gap: 4px; width: 100%; margin-top: 4px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 4px;">
+                <button class="btn btn-primary" style="flex: 1; padding: 3px 0; font-size: 0.55rem; height: auto;" onclick="window.acceptBotProactiveTrade()">Прийняти</button>
+                <button class="btn btn-danger" style="flex: 1; padding: 3px 0; font-size: 0.55rem; height: auto;" onclick="window.declineBotProactiveTrade()">Відхилити</button>
+            </div>
+        </div>
+    `;
+    window.updateTradeHighlightsForProactive(trade.offerProps, trade.requestProps);
+}
+
+// Resume bot turn execution after trade resolution
+function resumeBotTurnAfterTrade() {
+    const bot = game.getCurrentPlayer();
+    if (!bot || !bot.isBot || bot.isBankrupt) return;
+    
+    if (game.rolledDouble && !bot.inJail && !bot.isBankrupt) {
+        game.log(`🎲 Робот ${bot.name} викинув дубль і кидає ще раз!`);
+        updateGameLog(game);
+        setTimeout(runBotTurn, 1500);
+    } else {
+        executeBotEndTurn();
+    }
+}
+
+window.acceptBotProactiveTrade = () => {
+    if (!game.pendingBotTrade) return;
+    const t = game.pendingBotTrade;
+    const bot = game.players.find(p => p.id === t.botId);
+    const player = game.players.find(p => p.id === 0);
+    
+    // Safety check money limits
+    if (bot.money < t.offerCash) {
+        alert("У робота недостатньо коштів для завершення угоди!");
+        window.declineBotProactiveTrade();
+        return;
+    }
+    if (player.money < t.requestCash) {
+        alert("У вас недостатньо коштів для прийняття цієї угоди!");
+        game.botTradeActive = false;
+        game.pendingBotTrade = null;
+        window.closeCenterTrade();
+        resumeBotTurnAfterTrade();
+        return;
+    }
+    
+    // Execute trade
+    const success = game.executeTrade(t.botId, 0, t.offerProps, t.offerCash, t.requestProps, t.requestCash);
+    if (success) {
+        game.log(`🤝 Ви прийняли пропозицію обміну від ${bot.name}.`, 'gain');
+        renderPlayersHUD(game);
+        renderBoard(game, handleCellClick);
+        updateGameLog(game);
+    }
+    
+    game.botTradeActive = false;
+    game.pendingBotTrade = null;
+    window.closeCenterTrade();
+    
+    // Resume bot turn
+    setTimeout(resumeBotTurnAfterTrade, 1500);
+};
+
+window.declineBotProactiveTrade = () => {
+    if (!game.pendingBotTrade) return;
+    const bot = game.players.find(p => p.id === game.pendingBotTrade.botId);
+    
+    game.log(`❌ Ви відхилили пропозицію обміну від ${bot.name}.`, 'pay');
+    updateGameLog(game);
+    
+    game.botTradeActive = false;
+    game.pendingBotTrade = null;
+    window.closeCenterTrade();
+    
+    // Resume bot turn
+    setTimeout(resumeBotTurnAfterTrade, 1000);
+};
+
+window.updateTradeHighlightsForProactive = (offerProps, requestProps) => {
+    document.querySelectorAll('.cell').forEach(el => {
+        el.classList.remove('trade-highlight-offer', 'trade-highlight-request');
+    });
+    offerProps.forEach(id => {
+        const cellEl = document.querySelector(`.cell-${id}`);
+        if (cellEl) cellEl.classList.add('trade-highlight-offer');
+    });
+    requestProps.forEach(id => {
+        const cellEl = document.querySelector(`.cell-${id}`);
+        if (cellEl) cellEl.classList.add('trade-highlight-request');
+    });
 };
 
 window.updateTradeHighlights = () => {
@@ -913,7 +1191,7 @@ window.updateTradeHighlights = () => {
 };
 
 window.sendCenterTrade = (clickedPlayerId) => {
-    const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
+    const localPlayerId = isMultiplayerGame ? mp.playerId : 0;
     const proposer = game.players.find(p => p.id === localPlayerId);
     const receiver = game.players.find(p => p.id === clickedPlayerId);
 
@@ -962,9 +1240,75 @@ window.sendCenterTrade = (clickedPlayerId) => {
             `;
         }
     } else {
-        alert("Торги доступні тільки в мережевій грі!");
+        // Single-player bot trade evaluation
+        game.botTradeActive = true;
+        game.pendingBotTrade = {
+            botId: clickedPlayerId,
+            offerProps,
+            offerCash,
+            requestProps,
+            requestCash
+        };
+
+        const centerEl = document.getElementById('board-center');
+        if (centerEl) {
+            centerEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-secondary); text-align: center; font-size: 0.65rem; height: 100%; padding: 5px;">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size: 1.2rem; color: var(--color-primary);"></i>
+                    <p style="margin: 0; line-height: 1.3;"><strong>${receiver.name}</strong> розглядає вашу пропозицію...</p>
+                </div>
+            `;
+        }
+
+        setTimeout(() => {
+            if (!game.botTradeActive || !game.pendingBotTrade) return;
+
+            const res = evaluateBotTrade(localPlayerId, clickedPlayerId, offerProps, offerCash, requestProps, requestCash);
+            
+            if (res.accepted) {
+                const tradeSuccess = game.executeTrade(localPlayerId, clickedPlayerId, offerProps, offerCash, requestProps, requestCash);
+                if (tradeSuccess) {
+                    game.log(`🤝 Угода прийнята! ${receiver.name} погодився на ваші умови.`, 'gain');
+                    renderPlayersHUD(game);
+                    renderBoard(game, handleCellClick);
+                    updateGameLog(game);
+
+                    if (centerEl) {
+                        centerEl.innerHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--color-success); text-align: center; font-size: 0.65rem; height: 100%; padding: 5px;">
+                                <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+                                <p style="margin: 0; font-weight: 700;">Угоду прийнято!</p>
+                                <p style="margin: 0; color: var(--text-secondary); line-height: 1.2;">${receiver.name} погодився на обмін.</p>
+                                <button class="btn btn-primary" style="padding: 2px 8px; font-size: 0.55rem; width: auto; margin-top: 4px;" onclick="window.closeCenterTrade()">Чудово</button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    game.log(`❌ Угода не відбулась через помилку валідації.`, 'pay');
+                    updateGameLog(game);
+                    window.closeCenterTrade();
+                }
+            } else {
+                game.log(`❌ ${receiver.name} відхилив пропозицію обміну.`, 'pay');
+                updateGameLog(game);
+
+                if (centerEl) {
+                    centerEl.innerHTML = `
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--color-danger); text-align: center; font-size: 0.65rem; height: 100%; padding: 5px;">
+                            <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+                            <p style="margin: 0; font-weight: 700;">Угоду відхилено</p>
+                            <p style="margin: 0; color: var(--text-secondary); line-height: 1.2;">${receiver.name} вважає пропозицію невигідною.</p>
+                            <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.55rem; width: auto; margin-top: 4px;" onclick="window.closeCenterTrade()">Закрити</button>
+                        </div>
+                    `;
+                }
+            }
+
+            game.botTradeActive = false;
+            game.pendingBotTrade = null;
+
+        }, 1500);
     }
-};
 
 window.acceptCenterTrade = (proposerId, receiverId, offerProps, offerCash, requestProps, requestCash) => {
     const receiver = game.players.find(p => p.id === mp.playerId);
@@ -1020,8 +1364,17 @@ window.declineCenterTrade = (proposerId) => {
 
 // Open trade proposal editor in the center of the board
 function handlePlayerClick(clickedPlayerId) {
-    const localPlayerId = isMultiplayerGame ? mp.playerId : game.currentPlayerIndex;
+    if (game.botTradeActive) {
+        alert("Зараз триває обговорення угоди з роботом! Спочатку прийміть або відхиліть пропозицію.");
+        return;
+    }
+    const localPlayerId = isMultiplayerGame ? mp.playerId : 0;
     if (clickedPlayerId === localPlayerId) return;
+
+    if (!isMultiplayerGame && game.currentPlayerIndex !== 0) {
+        alert("Ви можете пропонувати угоди тільки у свій хід!");
+        return;
+    }
 
     const proposer = game.players.find(p => p.id === localPlayerId);
     const receiver = game.players.find(p => p.id === clickedPlayerId);
@@ -1208,6 +1561,10 @@ function enableNextTurnButton() {
 
 // User Roll Turn
 function handleUserRoll() {
+    if (game.botTradeActive) {
+        alert("Зараз триває обговорення угоди з роботом! Спочатку прийміть або відхиліть пропозицію.");
+        return;
+    }
     const rollBtn = document.getElementById('btn-roll-dice');
     rollBtn.disabled = true;
 
@@ -1577,6 +1934,10 @@ function resolveUserDebt(playerId, rentAmount) {
 
 // User finishes their roll turn
 function handleUserEndTurn() {
+    if (game.botTradeActive) {
+        alert("Зараз триває обговорення угоди з роботом! Спочатку прийміть або відхиліть пропозицію.");
+        return;
+    }
     document.getElementById('btn-end-turn').disabled = true;
 
     if (game.isGameOver) {
@@ -1782,6 +2143,25 @@ function executeBotUpgradesAndEnd() {
                 updateGameLog(game);
                 break;
             }
+        }
+    }
+
+    // Check for proactive trade in single-player mode
+    if (!isMultiplayerGame) {
+        const trade = checkForBotProactiveTrade(bot.id);
+        if (trade) {
+            game.pendingBotTrade = {
+                botId: bot.id,
+                offerProps: trade.offerProps,
+                offerCash: trade.offerCash,
+                requestProps: trade.requestProps,
+                requestCash: trade.requestCash
+            };
+            game.botTradeActive = true;
+            
+            // Display proposal to player
+            displayBotProactiveTrade(bot.id, trade);
+            return; // Pause bot turn loop, do NOT end turn!
         }
     }
 

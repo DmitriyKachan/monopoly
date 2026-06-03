@@ -239,6 +239,8 @@ export class GameState {
         this.logs = [];
         this.consecutiveDoubles = 0;
         this.rolledDouble = false;
+        this.botTradeActive = false;
+        this.pendingBotTrade = null;
     }
 
     addPlayer(name, colorClass, avatar, isBot = false, tokenSkin = '') {
@@ -270,6 +272,8 @@ export class GameState {
         let originalIndex = this.currentPlayerIndex;
         this.consecutiveDoubles = 0;
         this.rolledDouble = false;
+        this.botTradeActive = false;
+        this.pendingBotTrade = null;
         do {
             this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
             if (this.currentPlayerIndex === 0) {
