@@ -419,7 +419,7 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
 
     if (ownerName) {
         detailsHtml += `
-            <div class="deed-row highlight" style="border-bottom: 2px solid rgba(255, 215, 0, 0.2); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+            <div class="deed-row deed-row-owner">
                 <span>Власник</span><strong>${ownerName}</strong>
             </div>
         `;
@@ -445,7 +445,7 @@ export function showPropertyModal(space, onBuy, onDecline, isSelfOwner = false, 
             <div class="deed-row"><span>З 1 філією</span><span>₴${space.rent[1]}</span></div>
             <div class="deed-row"><span>З 2 філіями</span><span>₴${space.rent[2]}</span></div>
             <div class="deed-row"><span>З 3 філіями</span><span>₴${space.rent[3]}</span></div>
-            <div class="deed-row.highlight deed-row"><span>Супер-філія</span><strong>₴${space.rent[4]}</strong></div>
+            <div class="deed-row highlight"><span>Супер-філія</span><strong>₴${space.rent[4]}</strong></div>
             <div class="deed-row"><span>Вартість будівництва</span><strong>₴${space.branchCost} / філія</strong></div>
         `;
     } else if (space.type === SPACE_TYPES.STATION) {
@@ -541,10 +541,10 @@ export function showSpecialSpaceModal(space, currentFund = 0) {
                      color.includes('warning') ? '#f59e0b' : '#3b82f6';
 
     const content = `
-        <div class="chance-popup-card" style="border-color: ${colorHex}; box-shadow: 0 0 25px ${colorHex}40; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+        <div class="chance-popup-card" style="border-color: ${colorHex}; box-shadow: 0 0 25px ${colorHex}40;">
             <div class="chance-icon" style="color: ${colorHex};"><i class="fa-solid ${icon}"></i></div>
-            <h4 class="chance-title" style="color: #ffffff;">${title}</h4>
-            <p class="chance-text" style="color: var(--text-secondary);">${desc}</p>
+            <h4 class="chance-title">${title}</h4>
+            <p class="chance-text">${desc}</p>
         </div>
     `;
 

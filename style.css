@@ -319,6 +319,17 @@ body {
     transform: scale(0.98);
 }
 
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+.btn-danger:active {
+    transform: scale(0.98);
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+}
+
 .menu-row {
     display: flex;
     gap: 0.85rem;
@@ -1199,6 +1210,9 @@ body {
     border-radius: 20px;
     width: 90%;
     max-width: 400px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 87, 183, 0.1);
     transform: translateY(20px);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1239,7 +1253,7 @@ body {
     font-size: 0.95rem;
     line-height: 1.5;
     color: var(--text-secondary);
-    max-height: 250px;
+    flex: 1;
     overflow-y: auto;
 }
 
@@ -1288,6 +1302,16 @@ body {
 .deed-row.highlight {
     color: var(--color-yellow);
     font-weight: 700;
+}
+
+.deed-row-owner {
+    border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.deed-row-owner strong {
+    color: var(--color-yellow);
 }
 
 /* Chance card popup */
@@ -3261,6 +3285,101 @@ input:checked + .slider:before {
     border-color: rgba(217, 119, 6, 0.4) !important;
 }
 
+/* Light Theme Button Overrides */
+.light-theme .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
 
+.light-theme .btn-danger:active {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.2);
+}
 
+/* Deed Card Light Theme Overrides */
+.light-theme .deed-card {
+    background: hsl(220, 20%, 97%);
+    border: 1.5px solid hsl(220, 15%, 88%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
 
+.light-theme .deed-body {
+    color: var(--text-primary);
+}
+
+.light-theme .deed-row {
+    border-bottom: 1px solid hsl(220, 10%, 90%);
+}
+
+.light-theme .deed-row span {
+    color: var(--text-secondary);
+}
+
+.light-theme .deed-row strong {
+    color: var(--text-primary);
+}
+
+.light-theme .deed-row.highlight,
+.light-theme .deed-row.highlight strong {
+    color: #ea580c !important;
+}
+
+.light-theme .deed-row-owner {
+    border-bottom: 2px solid rgba(217, 119, 6, 0.2) !important;
+    padding-bottom: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.light-theme .deed-row-owner span {
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.light-theme .deed-row-owner strong {
+    color: #ea580c !important;
+}
+
+.light-theme .deed-mortgaged-banner {
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.light-theme .deed-mortgaged-banner i {
+    color: #dc2626 !important;
+}
+
+.light-theme .deed-mortgaged-banner div {
+    color: #dc2626 !important;
+}
+
+/* Special Space & Chance modal popups in light theme */
+.light-theme .chance-popup-card {
+    background: linear-gradient(135deg, hsl(260, 20%, 97%) 0%, hsl(290, 20%, 95%) 100%);
+    border: 2.5px solid var(--color-accent);
+    box-shadow: 0 8px 24px rgba(168, 85, 247, 0.15);
+}
+
+.light-theme .chance-title {
+    color: var(--text-primary) !important;
+}
+
+.light-theme .chance-text {
+    color: var(--text-secondary) !important;
+}
+
+/* Responsive Modal Footer stack layout for mobile screens */
+@media (max-width: 480px) {
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+    }
+    .modal-footer .btn {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0.85rem !important;
+        font-size: 0.95rem !important;
+    }
+}
