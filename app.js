@@ -267,6 +267,11 @@ document.addEventListener("DOMContentLoaded", () => {
     setupMenuTabs();
     initTheme();
     setupProfileCustomization();
+
+    const statsBtn = document.getElementById('btn-toggle-stats');
+    if (statsBtn) {
+        statsBtn.onclick = showGameStatsModal;
+    }
 });
 
 // Router Screen Switcher
@@ -1105,6 +1110,78 @@ function handlePlayerClick(clickedPlayerId) {
         centerEl.innerHTML = centerTradeHtml;
         window.updateTradeHighlights(); // Initialize empty highlights
     }
+}
+
+function showGameStatsModal() {
+    let html = `
+        <div class="stats-modal-content" style="color: var(--text-primary); font-family: 'Outfit', sans-serif;">
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glass); padding: 0.6rem 1rem; border-radius: 12px; margin-bottom: 1rem;">
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Поточний хід: <strong class="text-yellow" style="font-size: 0.9rem;">${game.turnCount} / ${game.maxTurns}</strong></span>
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Благодійний фонд: <strong class="text-success" style="font-size: 0.9rem;">₴${game.freeParkingCash}</strong></span>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+    `;
+
+    game.players.forEach(p => {
+        const netWorth = game.getNetWorth(p.id);
+        const ownedSpaces = game.spaces.filter(s => s.owner === p.id);
+        
+        let propsHtml = '';
+        if (ownedSpaces.length === 0) {
+            propsHtml = `<span style="color: var(--text-muted); font-size: 0.65rem;">Немає компаній</span>`;
+        } else {
+            ownedSpaces.forEach(s => {
+                const color = s.group ? `var(--prop-${s.group})` : 'var(--prop-special)';
+                const badgeText = s.type === SPACE_TYPES.STATION ? 'УЗ' : 
+                                  s.type === SPACE_TYPES.UTILITY ? 'Дія' : 
+                                  s.name.substring(0, 3);
+                const mortgageText = s.isMortgaged ? ' 🔒' : '';
+                const branchesText = s.branches > 0 ? ` (${s.branches}ф)` : '';
+                
+                propsHtml += `
+                    <span style="background: ${color}; color: #ffffff; padding: 2px 6px; border-radius: 6px; font-size: 0.55rem; font-weight: 700; display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,0.15);" title="${s.name}">
+                        ${badgeText}${branchesText}${mortgageText}
+                    </span>
+                `;
+            });
+        }
+
+        html += `
+            <div class="player-stat-card ${p.isBankrupt ? 'bankrupt' : ''}" style="background: rgba(255,255,255,0.03); border: 1.5px solid var(--border-glass); border-radius: 12px; padding: 0.75rem; position: relative; display: flex; flex-direction: column; gap: 0.4rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.35rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="avatar-container ${p.frame ? 'frame-' + p.frame : ''}" style="width: 26px; height: 26px;">
+                            <img src="${p.avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+                        </div>
+                        <span style="font-weight: 700; font-size: 0.8rem; color: var(--text-primary);">${p.name} ${game.currentPlayerIndex === p.id ? '👤' : ''}</span>
+                    </div>
+                    <span style="font-size: 0.75rem; font-weight: 700; color: ${p.isBankrupt ? 'var(--text-muted)' : 'var(--color-success)'};">
+                        ${p.isBankrupt ? 'БАНКРУТ' : `₴${p.money}`}
+                    </span>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-secondary);">
+                    <span>Капітал (Net Worth):</span>
+                    <strong>₴${p.isBankrupt ? 0 : netWorth}</strong>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 0.2rem;">
+                    <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600;">Компанії:</span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 3px;">
+                        ${propsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `
+            </div>
+        </div>
+    `;
+
+    showModal("Статистика гри 📊", html, [{ text: "Закрити", class: "btn-secondary" }]);
 }
 
 function enableNextTurnButton() {
