@@ -145,7 +145,7 @@ export function renderBoard(gameState, onCellClick) {
         // 5. Price / Rent tag
         if (space.price) {
             const priceEl = document.createElement('div');
-            if (space.owner !== null) {
+            if (space.owner !== undefined && space.owner !== null) {
                 const rentVal = getSpaceRentPrice(gameState, space);
                 priceEl.className = 'cell-price cell-price-rent';
                 priceEl.innerText = `₴${rentVal}`;
@@ -157,7 +157,7 @@ export function renderBoard(gameState, onCellClick) {
         }
 
         // 6. Owner label
-        if (space.owner !== null) {
+        if (space.owner !== undefined && space.owner !== null) {
             cell.classList.add(`owned-p${space.owner}`);
             const ownerDot = document.createElement('div');
             ownerDot.className = `cell-owner-indicator p-color-${space.owner}`;

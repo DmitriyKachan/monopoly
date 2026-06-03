@@ -629,6 +629,7 @@ body {
     padding: 6px;
     border: 2px solid rgba(255, 255, 255, 0.05);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 87, 183, 0.15);
+    overflow: hidden; /* Prevent cell elements from bleeding out at corners/bottom */
 }
 
 .monopoly-board {
@@ -655,6 +656,8 @@ body {
     padding: 3px;
     overflow: hidden;
     transition: box-shadow 0.2s ease, filter 0.2s ease;
+    min-height: 0;
+    min-width: 0;
 }
 
 .cell-active {
@@ -3382,4 +3385,56 @@ input:checked + .slider:before {
         padding: 0.85rem !important;
         font-size: 0.95rem !important;
     }
+}
+
+/* Light Theme HUD Card Solid Colors & Contrast Fixes */
+.light-theme .player-hud-card {
+    background: #ffffff !important;
+    border: 1.5px solid hsl(220, 10%, 86%) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+.light-theme .player-hud-card.p-border-0::before { background: #3b82f6; }
+.light-theme .player-hud-card.p-border-1::before { background: #10b981; }
+.light-theme .player-hud-card.p-border-2::before { background: #f43f5e; }
+.light-theme .player-hud-card.p-border-3::before { background: #eab308; }
+
+.light-theme .player-hud-card.active.p-border-0 {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.25) !important;
+    background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.light-theme .player-hud-card.active.p-border-1 {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.25) !important;
+    background: rgba(16, 185, 129, 0.05) !important;
+}
+
+.light-theme .player-hud-card.active.p-border-2 {
+    border-color: #f43f5e !important;
+    box-shadow: 0 0 12px rgba(244, 63, 94, 0.25) !important;
+    background: rgba(244, 63, 94, 0.05) !important;
+}
+
+.light-theme .player-hud-card.active.p-border-3 {
+    border-color: #eab308 !important;
+    box-shadow: 0 0 12px rgba(234, 179, 8, 0.25) !important;
+    background: rgba(234, 179, 8, 0.05) !important;
+}
+
+/* Green Money Contrast Override in Light Theme */
+.light-theme .hud-player-money {
+    color: #166534 !important; /* Perfect contrast dark green */
+}
+
+/* Token & Owner Dot outlines for white backgrounds */
+.light-theme .token {
+    border: 2px solid #ffffff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.light-theme .cell-owner-indicator {
+    border: 1.5px solid #ffffff;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.15);
 }
