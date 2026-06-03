@@ -27,6 +27,7 @@
     --prop-brown: #a16207;
     --prop-lightblue: #38bdf8;
     --prop-orange: #f97316;
+    --prop-yellow: #eab308;
     --prop-red: #ef4444;
     --prop-green: #22c55e;
     --prop-darkblue: #3b82f6;
@@ -147,7 +148,7 @@ body {
 .spinner {
     width: 48px;
     height: 48px;
-    border: 4px border-solid;
+    border: 4px solid;
     border-color: rgba(255,255,255,0.1);
     border-top-color: var(--color-primary);
     border-bottom-color: var(--color-yellow);
@@ -700,6 +701,8 @@ body {
     text-align: center;
     color: var(--text-primary);
     word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-top: 1px;
 }
 
@@ -1257,6 +1260,7 @@ body {
     line-height: 1.5;
     color: var(--text-secondary);
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -2473,7 +2477,8 @@ input:checked + .slider:before {
 }
 
 .light-theme .cell-price {
-    color: hsl(220, 15%, 45%) !important;
+    color: hsl(220, 20%, 25%) !important;
+    font-weight: 700;
 }
 
 .light-theme .game-hud-header {
@@ -2579,7 +2584,7 @@ input:checked + .slider:before {
 
 .leaderboard-name {
     font-weight: 600;
-    color: #ffffff;
+    color: var(--text-primary);
 }
 
 .light-theme .leaderboard-name {
@@ -3437,4 +3442,180 @@ input:checked + .slider:before {
 .light-theme .cell-owner-indicator {
     border: 1.5px solid #ffffff;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================================
+   COMPREHENSIVE LIGHT THEME DESIGN POLISH (v47)
+   ============================================================ */
+
+/* Corner cells — white bg instead of dark #111827 */
+.light-theme .corner-cell {
+    background: hsl(220, 15%, 97%) !important;
+    border-color: hsl(220, 10%, 83%) !important;
+}
+
+.light-theme .corner-cell .cell-name {
+    color: hsl(220, 25%, 25%) !important;
+}
+
+.light-theme .corner-icon {
+    color: hsl(220, 15%, 40%);
+}
+
+/* Owned cells — elegant soft pastel instead of aggressive neon glow */
+.light-theme .cell.owned-p0 {
+    border: 2px solid rgba(59, 130, 246, 0.5) !important;
+    background: rgba(59, 130, 246, 0.06) !important;
+    box-shadow: none !important;
+}
+
+.light-theme .cell.owned-p1 {
+    border: 2px solid rgba(16, 185, 129, 0.5) !important;
+    background: rgba(16, 185, 129, 0.06) !important;
+    box-shadow: none !important;
+}
+
+.light-theme .cell.owned-p2 {
+    border: 2px solid rgba(244, 63, 94, 0.5) !important;
+    background: rgba(244, 63, 94, 0.06) !important;
+    box-shadow: none !important;
+}
+
+.light-theme .cell.owned-p3 {
+    border: 2px solid rgba(234, 179, 8, 0.5) !important;
+    background: rgba(234, 179, 8, 0.06) !important;
+    box-shadow: none !important;
+}
+
+/* Turn indicator — premium accent styling for light theme */
+.light-theme .game-turn-indicator {
+    color: hsl(220, 25%, 20%) !important;
+    background: rgba(0, 87, 183, 0.06);
+    border-color: rgba(0, 87, 183, 0.12);
+}
+
+/* Game log entries — darker colours for readable contrast on white bg */
+.light-theme .log-entry.gain {
+    color: #15803d !important;
+}
+
+.light-theme .log-entry.pay {
+    color: #dc2626 !important;
+}
+
+.light-theme .log-entry.jail {
+    color: #b45309 !important;
+}
+
+.light-theme .log-entry.system {
+    color: #0e7490 !important;
+}
+
+/* Game log container in light theme */
+.light-theme .game-log-container {
+    background: rgba(0, 0, 0, 0.02) !important;
+    border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Cell color bar subtle shadow for depth on white cells */
+.light-theme .cell-color-bar {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* HUD player name contrast in light theme */
+.light-theme .hud-player-name {
+    color: var(--text-primary) !important;
+}
+
+/* Bankrupt card in light theme */
+.light-theme .player-hud-card.bankrupt {
+    background: hsl(220, 10%, 92%) !important;
+    opacity: 0.5;
+}
+
+/* Dice sum display in light theme */
+.light-theme .dice-sum-display {
+    color: hsl(220, 25%, 15%) !important;
+    background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.08);
+    font-weight: 800;
+}
+
+/* Lobby input in light theme */
+.light-theme .lobby-input {
+    background: hsl(220, 10%, 97%);
+    border-color: hsl(220, 10%, 80%);
+    color: var(--text-primary);
+}
+
+.light-theme .lobby-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(0, 87, 183, 0.08);
+}
+
+/* Leaderboard rows in light theme */
+.light-theme .leaderboard-row {
+    background: hsl(220, 10%, 98%);
+    border-color: rgba(0, 0, 0, 0.04);
+}
+
+.light-theme .leaderboard-row.my-row {
+    background: rgba(0, 87, 183, 0.04) !important;
+    border-color: var(--color-primary) !important;
+}
+
+/* Matchmaking status text in light theme */
+.light-theme .matchmaking-status {
+    color: var(--color-primary);
+}
+
+/* Radar circles in light theme */
+.light-theme .radar-circle {
+    border-color: rgba(0, 87, 183, 0.12);
+}
+
+/* Menu hero card gradient reset for light theme */
+.light-theme .menu-hero-card {
+    background: linear-gradient(135deg, rgba(0, 87, 183, 0.04) 0%, rgba(255, 215, 0, 0.02) 100%) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Prettier btn-back in light theme */
+.light-theme .btn-back {
+    background: hsl(220, 10%, 95%);
+    border-color: rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+.light-theme .btn-back:active {
+    background: hsl(220, 10%, 90%);
+}
+
+/* Ad info box in light theme */
+.light-theme .ad-info-box {
+    background: var(--bg-card-solid) !important;
+}
+
+/* Control action buttons in light theme */
+.light-theme .btn-game-exit,
+.light-theme .game-stats-toggle {
+    background: hsl(220, 10%, 95%);
+    border-color: rgba(0, 0, 0, 0.06);
+    color: var(--text-primary);
+}
+
+/* Profile badge in light theme */
+.light-theme .profile-badge {
+    color: var(--text-primary);
+}
+
+/* Room code display in light theme */
+.light-theme .room-code-display {
+    background: hsl(220, 10%, 97%);
+    border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Leaderboard wins in light theme */
+.light-theme .leaderboard-wins {
+    color: #15803d !important;
 }
