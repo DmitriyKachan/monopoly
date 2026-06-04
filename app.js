@@ -1309,6 +1309,7 @@ window.sendCenterTrade = (clickedPlayerId) => {
 
         }, 1500);
     }
+};
 
 window.acceptCenterTrade = (proposerId, receiverId, offerProps, offerCash, requestProps, requestCash) => {
     const receiver = game.players.find(p => p.id === mp.playerId);
