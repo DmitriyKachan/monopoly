@@ -338,14 +338,17 @@ async def handle_connection(websocket):
                                 "type": "profile_data",
                                 "coins": u_data.get("coins", 0),
                                 "purchased_frames": u_data.get("purchased_frames", []),
-                                "is_admin": True
+                                "is_admin": True,
+                                "debug_db_raw": json.dumps(db.get("user_data", {}).get(target_id_str, {})),
+                                "debug_db_success": "True"
                             }))
                         else:
                             await websocket.send(json.dumps({
                                 "type": "profile_data",
                                 "coins": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("coins", 0),
                                 "purchased_frames": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("purchased_frames", []),
-                                "is_admin": True
+                                "is_admin": True,
+                                "debug_db_success": "False_non_matching"
                             }))
                         print(f"Адміністратор {admin_tg_id} встановив {coins_val} коїнів для {target_id_str}")
                     else:
