@@ -162,12 +162,8 @@ async def handle_connection(websocket):
                     is_admin = False
                     try:
                         config = bot.load_config()
-                        admins = config.get("admins", ["dmitriykachan"])
+                        admins = config.get("admins", ["670845978"])
                         if str(tg_id) in [str(a) for a in admins]:
-                            is_admin = True
-                        if username and username in admins:
-                            is_admin = True
-                        if username == "dmitriykachan" or str(tg_id) == "792013800":
                             is_admin = True
                     except Exception as ex:
                         print(f"Помилка авторизації адміна: {ex}")
@@ -290,12 +286,8 @@ async def handle_connection(websocket):
                 import bot
                 try:
                     config = bot.load_config()
-                    admins = config.get("admins", ["dmitriykachan"])
+                    admins = config.get("admins", ["670845978"])
                     if admin_tg_id and str(admin_tg_id) in [str(a) for a in admins]:
-                        is_authorized = True
-                    if admin_username and admin_username in admins:
-                        is_authorized = True
-                    if admin_username == "dmitriykachan" or str(admin_tg_id) == "792013800":
                         is_authorized = True
                 except Exception as ex:
                     print(f"Помилка перевірки адміна: {ex}")
