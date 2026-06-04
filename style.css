@@ -1725,6 +1725,41 @@ body {
     .monopoly-board-wrapper {
         max-width: 320px;
     }
+    .cell-logo {
+        width: 14px;
+        height: 14px;
+        margin: 1px auto;
+    }
+    .cell-name {
+        font-size: 0.45rem;
+    }
+    .cell-price {
+        font-size: 0.42rem;
+    }
+    .cell-branches {
+        height: 4px;
+        margin-top: 1px;
+    }
+    .cell-branch-dot {
+        width: 4px;
+        height: 4px;
+    }
+    .token {
+        width: 14px;
+        height: 14px;
+    }
+    .cell-owner-indicator {
+        width: 6px;
+        height: 6px;
+        bottom: 2px;
+        right: 2px;
+    }
+    .corner-cell .cell-name {
+        font-size: 0.5rem;
+    }
+    .corner-icon {
+        font-size: 0.85rem;
+    }
     .game-players-hud {
         padding: 0.3rem 0.5rem;
     }
@@ -1814,6 +1849,41 @@ body {
     .monopoly-board-wrapper {
         max-width: 290px;
     }
+    .cell-logo {
+        width: 12px;
+        height: 12px;
+        margin: 0.5px auto;
+    }
+    .cell-name {
+        font-size: 0.42rem;
+    }
+    .cell-price {
+        font-size: 0.38rem;
+    }
+    .cell-branches {
+        height: 3px;
+        margin-top: 0.5px;
+    }
+    .cell-branch-dot {
+        width: 3px;
+        height: 3px;
+    }
+    .token {
+        width: 12px;
+        height: 12px;
+    }
+    .cell-owner-indicator {
+        width: 5px;
+        height: 5px;
+        bottom: 1px;
+        right: 1px;
+    }
+    .corner-cell .cell-name {
+        font-size: 0.45rem;
+    }
+    .corner-icon {
+        font-size: 0.75rem;
+    }
     .game-hud-header {
         height: 40px;
     }
@@ -1900,6 +1970,41 @@ body {
     .monopoly-board-wrapper {
         max-width: 250px;
     }
+    .cell-logo {
+        width: 10px;
+        height: 10px;
+        margin: 0.5px auto;
+    }
+    .cell-name {
+        font-size: 0.38rem;
+    }
+    .cell-price {
+        font-size: 0.35rem;
+    }
+    .cell-branches {
+        height: 2px;
+        margin-top: 0.5px;
+    }
+    .cell-branch-dot {
+        width: 2.5px;
+        height: 2.5px;
+    }
+    .token {
+        width: 10px;
+        height: 10px;
+    }
+    .cell-owner-indicator {
+        width: 4px;
+        height: 4px;
+        bottom: 1px;
+        right: 1px;
+    }
+    .corner-cell .cell-name {
+        font-size: 0.4rem;
+    }
+    .corner-icon {
+        font-size: 0.65rem;
+    }
     .game-hud-header {
         height: 36px;
     }
@@ -1938,14 +2043,39 @@ body {
         max-width: 290px;
     }
     .cell-logo {
-        width: 18px;
-        height: 18px;
+        width: 12px;
+        height: 12px;
+        margin: 0.5px auto;
     }
     .cell-price {
-        font-size: 0.45rem;
+        font-size: 0.38rem;
     }
     .cell-name {
-        font-size: 0.5rem;
+        font-size: 0.42rem;
+    }
+    .cell-branches {
+        height: 3px;
+        margin-top: 0.5px;
+    }
+    .cell-branch-dot {
+        width: 3px;
+        height: 3px;
+    }
+    .token {
+        width: 12px;
+        height: 12px;
+    }
+    .cell-owner-indicator {
+        width: 5px;
+        height: 5px;
+        bottom: 1px;
+        right: 1px;
+    }
+    .corner-cell .cell-name {
+        font-size: 0.45rem;
+    }
+    .corner-icon {
+        font-size: 0.75rem;
     }
     .die {
         width: 28px;
