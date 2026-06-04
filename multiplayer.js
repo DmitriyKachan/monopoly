@@ -79,22 +79,24 @@ export class MultiplayerManager {
         };
     }
 
-    createRoom(name, avatar) {
+    createRoom(name, avatar, tgId = null) {
         if (!this.socket) return;
         this.socket.send(JSON.stringify({
             type: 'create',
             name: name,
-            avatar: avatar
+            avatar: avatar,
+            tg_id: tgId
         }));
     }
 
-    joinRoom(roomCode, name, avatar) {
+    joinRoom(roomCode, name, avatar, tgId = null) {
         if (!this.socket) return;
         this.socket.send(JSON.stringify({
             type: 'join',
             room_code: roomCode,
             name: name,
-            avatar: avatar
+            avatar: avatar,
+            tg_id: tgId
         }));
     }
 

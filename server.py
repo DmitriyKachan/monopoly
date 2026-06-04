@@ -147,6 +147,7 @@ async def handle_connection(websocket):
             
             if msg_type == "get_profile":
                 tg_id = data.get("tg_id")
+                username = data.get("username")
                 if tg_id:
                     import bot
                     tg_id_str = str(tg_id)
@@ -158,13 +159,27 @@ async def handle_connection(websocket):
                     
                     bot.update_db(init_profile)
                     
+                    is_admin = False
+                    try:
+                        config = bot.load_config()
+                        admins = config.get("admins", ["dmitriykachan"])
+                        if str(tg_id) in [str(a) for a in admins]:
+                            is_admin = True
+                        if username and username in admins:
+                            is_admin = True
+                        if username == "dmitriykachan" or str(tg_id) == "792013800":
+                            is_admin = True
+                    except Exception as ex:
+                        print(f"Помилка авторизації адміна: {ex}")
+                    
                     db = bot.db_load()
                     if db and "user_data" in db and tg_id_str in db["user_data"]:
                         user_wallet = db["user_data"][tg_id_str]
                         await websocket.send(json.dumps({
                             "type": "profile_data",
                             "coins": user_wallet.get("coins", 0),
-                            "purchased_frames": user_wallet.get("purchased_frames", [])
+                            "purchased_frames": user_wallet.get("purchased_frames", []),
+                            "is_admin": is_admin
                         }))
                     else:
                         await websocket.send(json.dumps({
@@ -267,6 +282,85 @@ async def handle_connection(websocket):
                             "message": "Не вдалося згенерувати посилання на оплату. Спробуйте пізніше."
                         }))
 
+            elif msg_type == "admin_set_coins":
+                admin_tg_id = data.get("admin_tg_id")
+                admin_username = data.get("admin_username")
+                
+                is_authorized = False
+                import bot
+                try:
+                    config = bot.load_config()
+                    admins = config.get("admins", ["dmitriykachan"])
+                    if admin_tg_id and str(admin_tg_id) in [str(a) for a in admins]:
+                        is_authorized = True
+                    if admin_username and admin_username in admins:
+                        is_authorized = True
+                    if admin_username == "dmitriykachan" or str(admin_tg_id) == "792013800":
+                        is_authorized = True
+                except Exception as ex:
+                    print(f"Помилка перевірки адміна: {ex}")
+
+                if not is_authorized:
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": "Помилка доступу: Ви не є адміністратором!"
+                    }))
+                    continue
+                
+                target_tg_id = data.get("target_tg_id")
+                coins_val = int(data.get("coins", 0))
+                
+                if target_tg_id:
+                    target_id_str = str(target_tg_id)
+                    
+                    def update_target_coins(db):
+                        if "user_data" not in db:
+                            db["user_data"] = {}
+                        if target_id_str not in db["user_data"]:
+                            db["user_data"][target_id_str] = {"coins": 0, "purchased_frames": []}
+                        db["user_data"][target_id_str]["coins"] = coins_val
+                        
+                    if bot.update_db(update_target_coins):
+                        for room_code, room in list(ROOMS.items()):
+                            if "websockets" in room:
+                                for p_idx, p in enumerate(room["players"]):
+                                    if str(p.get("tg_id")) == target_id_str:
+                                        target_ws = room["websockets"].get(p["id"])
+                                        if target_ws:
+                                            try:
+                                                db = bot.db_load()
+                                                u_data = db.get("user_data", {}).get(target_id_str, {})
+                                                await target_ws.send(json.dumps({
+                                                    "type": "profile_data",
+                                                    "coins": u_data.get("coins", 0),
+                                                    "purchased_frames": u_data.get("purchased_frames", []),
+                                                    "is_admin": target_id_str in [str(a) for a in config.get("admins", ["dmitriykachan"])]
+                                                }))
+                                            except Exception as e:
+                                                print(f"Error syncing target: {e}")
+                        
+                        if str(admin_tg_id) == target_id_str:
+                            db = bot.db_load()
+                            u_data = db.get("user_data", {}).get(target_id_str, {})
+                            await websocket.send(json.dumps({
+                                "type": "profile_data",
+                                "coins": u_data.get("coins", 0),
+                                "purchased_frames": u_data.get("purchased_frames", []),
+                                "is_admin": True
+                            }))
+                        else:
+                            await websocket.send(json.dumps({
+                                "type": "profile_data",
+                                "coins": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("coins", 0),
+                                "purchased_frames": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("purchased_frames", []),
+                                "is_admin": True
+                            }))
+                        print(f"Адміністратор {admin_tg_id} встановив {coins_val} коїнів для {target_id_str}")
+                    else:
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": "Не вдалося зберегти зміни в базі даних."
+                        }))
 
             elif msg_type == "create":
                 # Create a new room
@@ -283,8 +377,12 @@ async def handle_connection(websocket):
                         "id": 0,
                         "name": player_name,
                         "avatar": avatar,
+                        "tg_id": data.get("tg_id"),
                         "is_host": True
-                    }]
+                    }],
+                    "websockets": {
+                        0: websocket
+                    }
                 }
                 current_room = room_code
                 
@@ -323,8 +421,12 @@ async def handle_connection(websocket):
                     "id": player_id,
                     "name": player_name,
                     "avatar": avatar,
+                    "tg_id": data.get("tg_id"),
                     "is_host": False
                 })
+                if "websockets" not in room:
+                    room["websockets"] = {}
+                room["websockets"][player_id] = websocket
                 current_room = room_code
                 
                 # Notify sender

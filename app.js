@@ -36,7 +36,16 @@ if (urlParams.has('purchased_frames')) {
 mp.onProfileDataCallback = (data) => {
     userProfile.coins = data.coins;
     userProfile.purchasedFrames = data.purchased_frames;
+    userProfile.isAdmin = data.is_admin || false;
+    
+    // Toggle admin panel button visibility in Cabinet tab!
+    const adminBtnContainer = document.getElementById('admin-panel-btn-container');
+    if (adminBtnContainer) {
+        adminBtnContainer.style.display = userProfile.isAdmin ? 'block' : 'none';
+    }
+    
     syncDonateShop();
+    syncProfileTab();
 };
 
 mp.onInvoiceLinkCallback = (data) => {
@@ -46,7 +55,7 @@ mp.onInvoiceLinkCallback = (data) => {
             if (status === 'paid') {
                 triggerConfetti();
                 if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {
-                    mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId }));
+                    mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId, username: userProfile.username }));
                 }
             } else {
                 syncDonateShop();
@@ -186,7 +195,8 @@ if (savedProfile) {
     } catch (e) {
         console.error("Error parsing saved profile", e);
     }
-} else if (tg && tg.initDataUnsafe?.user) {
+}
+if (tg && tg.initDataUnsafe?.user) {
     const u = tg.initDataUnsafe.user;
     userProfile.name = u.first_name + (u.last_name ? ' ' + u.last_name : '');
     userProfile.username = u.username || 'player';
@@ -272,6 +282,64 @@ document.addEventListener("DOMContentLoaded", () => {
     if (statsBtn) {
         statsBtn.onclick = showGameStatsModal;
     }
+
+    // Initialize Admin status based on connection type
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.protocol === 'file:';
+    if (isLocal) {
+        userProfile.isAdmin = true;
+    }
+
+    const adminBtnContainer = document.getElementById('admin-panel-btn-container');
+    if (adminBtnContainer) {
+        adminBtnContainer.style.display = userProfile.isAdmin ? 'block' : 'none';
+    }
+
+    const openAdminBtn = document.getElementById('btn-open-admin-panel');
+    if (openAdminBtn) {
+        openAdminBtn.onclick = showAdminPanelModal;
+    }
+
+    // Keyboard shortcut for verified admins
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.code === 'KeyA') {
+            if (userProfile.isAdmin) {
+                showAdminPanelModal();
+            }
+        }
+    });
+
+    // 5-clicks secret trigger on user avatar
+    const userAvatarEl = document.getElementById('user-avatar');
+    if (userAvatarEl) {
+        let avatarClickCount = 0;
+        let avatarClickTimeout = null;
+        userAvatarEl.addEventListener('click', () => {
+            if (!userProfile.isAdmin) return;
+            avatarClickCount++;
+            clearTimeout(avatarClickTimeout);
+            if (avatarClickCount >= 5) {
+                avatarClickCount = 0;
+                showAdminPanelModal();
+            } else {
+                avatarClickTimeout = setTimeout(() => {
+                    avatarClickCount = 0;
+                }, 2000);
+            }
+        });
+    }
+
+    // Initial silent profile fetch for Telegram sessions
+    if (tgId) {
+        ensureWsConnected(() => {
+            mp.socket.send(JSON.stringify({
+                type: "get_profile",
+                tg_id: tgId,
+                username: userProfile.username
+            }));
+        });
+    }
 });
 
 // Router Screen Switcher
@@ -303,7 +371,7 @@ function autoJoinRoomByCode(code) {
     document.getElementById('matchmaking-status').innerText = `Підключення до кімнати ${code}...`;
 
     mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
-        mp.joinRoom(code, userProfile.name, getSyncedAvatar());
+        mp.joinRoom(code, userProfile.name, getSyncedAvatar(), tgId);
     });
 
     mp.onPlayerUpdateCallback = (players) => {
@@ -337,7 +405,7 @@ function createRoomWorkflow(autoShare = false) {
     
     mp.connect(getWsUrl(), userProfile.name, getSyncedAvatar(), () => {
         document.getElementById('matchmaking-status').innerText = "Створення кімнати...";
-        mp.createRoom(userProfile.name, getSyncedAvatar());
+        mp.createRoom(userProfile.name, getSyncedAvatar(), tgId);
     });
 
     let shareLinkOpened = false;
@@ -2669,7 +2737,8 @@ function setupMenuTabs() {
                     ensureWsConnected(() => {
                         mp.socket.send(JSON.stringify({
                             type: "get_profile",
-                            tg_id: tgId
+                            tg_id: tgId,
+                            username: userProfile.username
                         }));
                     });
                 }
@@ -2930,7 +2999,19 @@ function showFrameShopModal() {
 
 window.buyCoinsPack = (packId) => {
     if (!tgId) {
-        alert("Помилка: купівля доступна тільки при грі через Telegram!");
+        let addedCoins = 0;
+        if (packId === 'pack_50') addedCoins = 50;
+        else if (packId === 'pack_120') addedCoins = 120;
+        else if (packId === 'pack_300') addedCoins = 300;
+        
+        userProfile.coins = (userProfile.coins || 0) + addedCoins;
+        localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+        triggerConfetti();
+        syncDonateShop();
+        syncProfileTab();
+        showModal("Оплата успішна! 🪙", `<p>Ви отримали +${addedCoins} Моно-Коїнів (офлайн-режим).</p>`, [
+            { text: "Клас!", class: "btn-primary" }
+        ]);
         return;
     }
     showModal("Завантаження ⏳", "<p>Створення платіжного посилання Stars...</p>", []);
@@ -2956,7 +3037,25 @@ window.purchaseFrame = (frameId) => {
     if (!frame) return;
 
     if (!tgId) {
-        alert("Помилка: купівля доступна тільки при запуску з Telegram!");
+        const balance = userProfile.coins || 0;
+        if (balance < frame.price) {
+            alert(`Недостатньо Моно-Коїнів! Потрібно: 🪙${frame.price}, у вас: 🪙${balance}`);
+            return;
+        }
+        userProfile.coins -= frame.price;
+        if (!userProfile.purchasedFrames) userProfile.purchasedFrames = [];
+        if (!userProfile.purchasedFrames.includes(frameId)) {
+            userProfile.purchasedFrames.push(frameId);
+        }
+        userProfile.frame = frameId;
+        localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+        triggerConfetti();
+        updateUserAvatarFrames();
+        syncDonateShop();
+        syncProfileTab();
+        showModal("Успішна покупка! 🎉", "<p>Ви придбали та одягли рамку!</p>", [
+            { text: "Клас!", class: "btn-primary" }
+        ]);
         return;
     }
 
@@ -3027,4 +3126,107 @@ function renderDonateFramesList() {
         unequipEl.innerHTML = activeFrame ? `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : '';
     }
 }
+
+// ==========================================================================
+// DEVELOPER ADMIN PANEL & SUBMISSION HANDLERS
+// ==========================================================================
+function showAdminPanelModal() {
+    let modalHtml = `
+        <div class="admin-panel-container" style="color: var(--text-primary); display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+            <div style="border-bottom: 1px solid var(--border-glass); padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.15rem; color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.4); display: flex; align-items: center; gap: 0.4rem;">
+                    <i class="fa-solid fa-user-shield"></i> Адмін-Панель Монополії
+                </h3>
+                <span style="font-size: 0.75rem; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 700;">ADMIN</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.3rem;">Введіть Telegram ID отримувача:</label>
+                    <input type="text" id="admin-target-tg-id" placeholder="Telegram ID (наприклад: 792013800)" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                    <button class="btn btn-secondary" id="btn-admin-insert-my-id" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; width: auto; margin-top: 0.4rem; font-family: inherit;">
+                        🎯 Вставити мій ID
+                    </button>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.3rem;">Кількість Моно-Коїнів:</label>
+                    <input type="number" id="admin-coins-value" placeholder="Наприклад: 500" value="100" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                </div>
+
+                <button class="btn btn-primary" id="btn-admin-submit-coins" style="margin-top: 0.5rem; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); border: none; color: white;">
+                    Нарахувати коїни 🪙
+                </button>
+            </div>
+        </div>
+    `;
+
+    showModal("Адміністрування", modalHtml, []);
+    
+    const insertMyIdBtn = document.getElementById('btn-admin-insert-my-id');
+    if (insertMyIdBtn) {
+        insertMyIdBtn.onclick = () => {
+            const targetInput = document.getElementById('admin-target-tg-id');
+            if (targetInput) {
+                targetInput.value = tgId || 'local_admin';
+            }
+        };
+    }
+    
+    const submitCoinsBtn = document.getElementById('btn-admin-submit-coins');
+    if (submitCoinsBtn) {
+        submitCoinsBtn.onclick = window.adminSubmitSetCoins;
+    }
+}
+
+window.adminSubmitSetCoins = () => {
+    const targetIdInput = document.getElementById('admin-target-tg-id');
+    const coinsValueInput = document.getElementById('admin-coins-value');
+    if (!targetIdInput || !coinsValueInput) return;
+    
+    const targetId = targetIdInput.value.trim();
+    const coinsVal = parseInt(coinsValueInput.value) || 0;
+    
+    if (!targetId) {
+        alert("Будь ласка, введіть Telegram ID отримувача!");
+        return;
+    }
+
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.protocol === 'file:';
+    
+    if (!tgId && isLocal) {
+        userProfile.coins = coinsVal;
+        localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+        triggerConfetti();
+        syncDonateShop();
+        syncProfileTab();
+        
+        showModal("Оффлайн нарахування ✅", `<p>Баланс вашого локального профілю встановлено на <strong>🪙${coinsVal}</strong>.</p>`, [
+            { text: "Чудово", class: "btn-primary" }
+        ]);
+        return;
+    }
+
+    ensureWsConnected(() => {
+        mp.socket.send(JSON.stringify({
+            type: "admin_set_coins",
+            admin_tg_id: tgId,
+            admin_username: userProfile.username,
+            target_tg_id: targetId,
+            coins: coinsVal
+        }));
+
+        showModal("Запит надіслано ⚙️", `<p>Запит на нарахування <strong>🪙${coinsVal}</strong> для ID <strong>${targetId}</strong> надіслано на сервер.</p>`, [
+            { text: "Готово", class: "btn-primary", onClick: () => {
+                if (targetId === tgId) {
+                    if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {
+                        mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId }));
+                    }
+                }
+            }}
+        ]);
+    });
+};
 
