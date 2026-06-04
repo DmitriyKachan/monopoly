@@ -13,7 +13,7 @@ CONFIG_FILE = 'config.json'
 DEFAULT_TOKEN = ''
 
 DB_BIN_ID = "deaeead"
-DB_URL = f"https://extendsclass.com/api/json-storage/bin/{DB_BIN_ID}"
+DB_URL = f"https://json.extendsclass.com/bin/{DB_BIN_ID}"
 DB_LOCK = threading.Lock()
 
 def db_load():
