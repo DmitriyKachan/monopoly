@@ -16,6 +16,7 @@ export class MultiplayerManager {
         this.onProfileDataCallback = null;
         this.onInvoiceLinkCallback = null;
         this.onBuyFrameSuccessCallback = null;
+        this.onBuyItemSuccessCallback = null;
     }
 
     connect(url, name, avatar, onConnected) {
@@ -64,6 +65,9 @@ export class MultiplayerManager {
                     break;
                 case 'buy_frame_success':
                     if (this.onBuyFrameSuccessCallback) this.onBuyFrameSuccessCallback(data);
+                    break;
+                case 'buy_item_success':
+                    if (this.onBuyItemSuccessCallback) this.onBuyItemSuccessCallback(data);
                     break;
                 case 'error':
                     // Close matching loading screens or loaders if any

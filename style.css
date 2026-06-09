@@ -853,6 +853,33 @@ body {
     border: 2px solid #ffffff;
     box-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 6px currentColor;
     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(6px, 3vw, 11px);
+    line-height: 1;
+}
+
+/* Premium Token Styles */
+.token.token-patron {
+    background: radial-gradient(circle at 35% 35%, #ffb366 0%, #d97706 60%, #78350f 100%) !important;
+    box-shadow: 0 0 10px rgba(217, 119, 6, 0.8), inset 0 -2px 4px rgba(0,0,0,0.4) !important;
+    color: #ffd7aa;
+}
+.token.token-crown {
+    background: radial-gradient(circle at 35% 35%, #ffe259 0%, #ffa751 60%, #b91c1c 100%) !important;
+    box-shadow: 0 0 12px rgba(255, 167, 81, 0.9), inset 0 -2px 4px rgba(0,0,0,0.4) !important;
+    color: #fffbeb;
+}
+.token.token-tractor {
+    background: radial-gradient(circle at 35% 35%, #a7f3d0 0%, #059669 60%, #064e3b 100%) !important;
+    box-shadow: 0 0 10px rgba(5, 150, 105, 0.8), inset 0 -2px 4px rgba(0,0,0,0.4) !important;
+    color: #d1fae5;
+}
+.token.token-cat {
+    background: radial-gradient(circle at 35% 35%, #fda4af 0%, #f43f5e 60%, #881337 100%) !important;
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.8), inset 0 -2px 4px rgba(0,0,0,0.4) !important;
+    color: #ffe4e6;
 }
 
 /* Token Cosmetic skins styles */
@@ -1077,6 +1104,37 @@ body {
 
 .die-gold .dot {
     background-color: #111827 !important;
+}
+
+/* Dice Premium Trails */
+.die.rolling.trail-fire {
+    animation: roll 0.6s infinite ease-in-out, trail-fire-glow 0.4s ease-in-out infinite alternate;
+}
+@keyframes trail-fire-glow {
+    0% {
+        box-shadow: 0 0 8px #ff4500, -5px -5px 15px #ff8c00, 5px 5px 15px #ff3300;
+    }
+    100% {
+        box-shadow: 0 0 15px #ff3300, -10px -10px 25px #ff4500, 10px 10px 25px #ffa500;
+    }
+}
+
+.die.rolling.trail-rainbow {
+    animation: roll 0.6s infinite ease-in-out, trail-rainbow-glow 0.6s linear infinite;
+}
+@keyframes trail-rainbow-glow {
+    0% {
+        box-shadow: 0 0 12px #ff007f, -5px -5px 15px #7f00ff, 5px 5px 15px #00f2fe;
+    }
+    33% {
+        box-shadow: 0 0 12px #00f2fe, -5px -5px 15px #00ff7f, 5px 5px 15px #ff007f;
+    }
+    66% {
+        box-shadow: 0 0 12px #00ff7f, -5px -5px 15px #ff007f, 5px 5px 15px #7f00ff;
+    }
+    100% {
+        box-shadow: 0 0 12px #ff007f, -5px -5px 15px #7f00ff, 5px 5px 15px #00f2fe;
+    }
 }
 
 .die .dot {
@@ -2989,6 +3047,40 @@ input:checked + .slider:before {
     background-size: 400% 400%;
     animation: rainbow-glow-shift 4s ease infinite;
     box-shadow: 0 0 15px rgba(127, 0, 255, 0.6);
+}
+
+.avatar-container.frame-cyberpunk {
+    padding: 3px;
+    background: linear-gradient(135deg, #ff007f 0%, #00f2fe 100%);
+    box-shadow: 0 0 12px rgba(255, 0, 127, 0.6), inset 0 0 8px rgba(0, 242, 254, 0.6);
+    animation: cyberpunk-glow 2.5s infinite alternate;
+}
+@keyframes cyberpunk-glow {
+    0% { box-shadow: 0 0 8px rgba(255, 0, 127, 0.4), inset 0 0 6px rgba(0, 242, 254, 0.4); }
+    100% { box-shadow: 0 0 16px rgba(255, 0, 127, 0.8), inset 0 0 12px rgba(0, 242, 254, 0.8); }
+}
+
+.avatar-container.frame-cossack {
+    padding: 3.5px;
+    background: linear-gradient(135deg, #0057b7 0%, #ffd700 100%);
+    box-shadow: 0 0 12px rgba(0, 87, 183, 0.5), 0 0 12px rgba(255, 215, 0, 0.5);
+    animation: cossack-glow 3s infinite alternate;
+}
+@keyframes cossack-glow {
+    0% { box-shadow: 0 0 6px rgba(0, 87, 183, 0.4), 0 0 6px rgba(255, 215, 0, 0.4); }
+    100% { box-shadow: 0 0 16px rgba(0, 87, 183, 0.85), 0 0 16px rgba(255, 215, 0, 0.85); }
+}
+
+.avatar-container.frame-fire {
+    padding: 3px;
+    background: linear-gradient(0deg, #ff3300 0%, #ffaa00 100%);
+    box-shadow: 0 0 15px rgba(255, 51, 0, 0.7);
+    animation: fire-glow-flicker 1.5s infinite alternate;
+}
+@keyframes fire-glow-flicker {
+    0% { box-shadow: 0 0 10px rgba(255, 51, 0, 0.5); filter: hue-rotate(0deg); }
+    50% { box-shadow: 0 0 18px rgba(255, 170, 0, 0.8); }
+    100% { box-shadow: 0 0 12px rgba(255, 51, 0, 0.6); filter: hue-rotate(15deg); }
 }
 
 @keyframes rainbow-glow-shift {

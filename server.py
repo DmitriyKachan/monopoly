@@ -155,7 +155,32 @@ async def handle_connection(websocket):
                         if "user_data" not in db:
                             db["user_data"] = {}
                         if tg_id_str not in db["user_data"]:
-                            db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
+                            db["user_data"][tg_id_str] = {
+                                "coins": 0,
+                                "purchased_frames": [],
+                                "purchased_tokens": [],
+                                "purchased_dice": [],
+                                "purchased_trails": [],
+                                "purchased_effects": [],
+                                "equipped_frame": "default",
+                                "equipped_token": "default",
+                                "equipped_dice": "default",
+                                "equipped_trail": "default",
+                                "equipped_effect": "default"
+                            }
+                        else:
+                            user_data = db["user_data"][tg_id_str]
+                            modified = False
+                            for key in ["purchased_frames", "purchased_tokens", "purchased_dice", "purchased_trails", "purchased_effects"]:
+                                if key not in user_data:
+                                    user_data[key] = []
+                                    modified = True
+                            for key in ["equipped_frame", "equipped_token", "equipped_dice", "equipped_trail", "equipped_effect"]:
+                                if key not in user_data:
+                                    user_data[key] = "default"
+                                    modified = True
+                            if modified:
+                                db["user_data"][tg_id_str] = user_data
                     
                     bot.update_db(init_profile)
                     
@@ -175,6 +200,15 @@ async def handle_connection(websocket):
                             "type": "profile_data",
                             "coins": user_wallet.get("coins", 0),
                             "purchased_frames": user_wallet.get("purchased_frames", []),
+                            "purchased_tokens": user_wallet.get("purchased_tokens", []),
+                            "purchased_dice": user_wallet.get("purchased_dice", []),
+                            "purchased_trails": user_wallet.get("purchased_trails", []),
+                            "purchased_effects": user_wallet.get("purchased_effects", []),
+                            "equipped_frame": user_wallet.get("equipped_frame", "default"),
+                            "equipped_token": user_wallet.get("equipped_token", "default"),
+                            "equipped_dice": user_wallet.get("equipped_dice", "default"),
+                            "equipped_trail": user_wallet.get("equipped_trail", "default"),
+                            "equipped_effect": user_wallet.get("equipped_effect", "default"),
                             "is_admin": is_admin
                         }))
                     else:
@@ -183,20 +217,34 @@ async def handle_connection(websocket):
                             "message": "Не вдалося завантажити профіль з бази даних."
                         }))
                     
-            elif msg_type == "buy_frame":
+            elif msg_type == "buy_item":
                 tg_id = data.get("tg_id")
-                frame_id = data.get("frame_id")
+                item_category = data.get("category")
+                item_id = data.get("item_id")
                 
-                # Стоимость рамок
-                FRAME_PRICES = {
-                    "neon": 100,
-                    "gold": 250,
-                    "rainbow": 500
+                # Prices list
+                ITEM_PRICES = {
+                    "frame": {
+                        "neon": 100, "gold": 250, "rainbow": 500,
+                        "cyberpunk": 150, "cossack": 200, "fire": 300
+                    },
+                    "token": {
+                        "patron": 250, "crown": 300, "tractor": 150, "cat": 200
+                    },
+                    "dice": {
+                        "gold": 400, "neon": 250
+                    },
+                    "trail": {
+                        "fire": 150, "rainbow": 150
+                    },
+                    "effect": {
+                        "fireworks": 100, "money": 150, "coins": 120
+                    }
                 }
                 
-                if tg_id and frame_id in FRAME_PRICES:
+                if tg_id and item_category in ITEM_PRICES and item_id in ITEM_PRICES[item_category]:
                     import bot
-                    price = FRAME_PRICES[frame_id]
+                    price = ITEM_PRICES[item_category][item_id]
                     tg_id_str = str(tg_id)
                     
                     result = {"status": "error", "message": "Невідома помилка", "coins": 0}
@@ -205,20 +253,38 @@ async def handle_connection(websocket):
                         if "user_data" not in db:
                             db["user_data"] = {}
                         if tg_id_str not in db["user_data"]:
-                            db["user_data"][tg_id_str] = {"coins": 0, "purchased_frames": []}
+                            db["user_data"][tg_id_str] = {
+                                "coins": 0,
+                                "purchased_frames": [],
+                                "purchased_tokens": [],
+                                "purchased_dice": [],
+                                "purchased_trails": [],
+                                "purchased_effects": [],
+                                "equipped_frame": "default",
+                                "equipped_token": "default",
+                                "equipped_dice": "default",
+                                "equipped_trail": "default",
+                                "equipped_effect": "default"
+                            }
                             
                         user_data = db["user_data"][tg_id_str]
                         current_coins = user_data.get("coins", 0)
-                        purchased = user_data.get("purchased_frames", [])
                         
-                        if frame_id in purchased:
+                        # Ensure lists exist
+                        for key in ["purchased_frames", "purchased_tokens", "purchased_dice", "purchased_trails", "purchased_effects"]:
+                            if key not in user_data:
+                                user_data[key] = []
+                                
+                        list_key = f"purchased_{item_category}s"
+                        purchased_list = user_data[list_key]
+                        
+                        if item_id in purchased_list:
                             result["status"] = "already_purchased"
                             result["coins"] = current_coins
                         elif current_coins >= price:
                             user_data["coins"] = current_coins - price
-                            if frame_id not in purchased:
-                                purchased.append(frame_id)
-                            user_data["purchased_frames"] = purchased
+                            purchased_list.append(item_id)
+                            user_data[list_key] = purchased_list
                             db["user_data"][tg_id_str] = user_data
                             
                             result["status"] = "success"
@@ -230,12 +296,13 @@ async def handle_connection(websocket):
                     if bot.update_db(perform_purchase):
                         if result["status"] in ["success", "already_purchased"]:
                             await websocket.send(json.dumps({
-                                "type": "buy_frame_success",
-                                "frame_id": frame_id,
+                                "type": "buy_item_success",
+                                "category": item_category,
+                                "item_id": item_id,
                                 "coins": result["coins"]
                             }))
                             if result["status"] == "success":
-                                print(f"Игрок {tg_id_str} успешно купил рамку {frame_id} за {price} коинов.")
+                                print(f"Игрок {tg_id_str} успешно купил {item_category} {item_id} за {price} коинов.")
                         elif result["status"] == "insufficient_funds":
                             await websocket.send(json.dumps({
                                 "type": "error",
@@ -246,16 +313,58 @@ async def handle_connection(websocket):
                             "type": "error",
                             "message": "Не вдалося зберегти покупку в базі даних. Спробуйте ще раз."
                         }))
+
+            elif msg_type == "equip_item":
+                tg_id = data.get("tg_id")
+                item_category = data.get("category")
+                item_id = data.get("item_id")
+                
+                if tg_id and item_category in ["frame", "token", "dice", "trail", "effect"]:
+                    import bot
+                    tg_id_str = str(tg_id)
+                    
+                    def perform_equip(db):
+                        if "user_data" not in db:
+                            db["user_data"] = {}
+                        if tg_id_str not in db["user_data"]:
+                            return
+                        user_data = db["user_data"][tg_id_str]
                         
+                        list_key = f"purchased_{item_category}s"
+                        purchased = user_data.get(list_key, [])
+                        
+                        if item_id == "default" or item_id in purchased:
+                            user_data[f"equipped_{item_category}"] = item_id
+                            db["user_data"][tg_id_str] = user_data
+                            
+                    if bot.update_db(perform_equip):
+                        db = bot.db_load()
+                        u_data = db.get("user_data", {}).get(tg_id_str, {})
+                        await websocket.send(json.dumps({
+                            "type": "profile_data",
+                            "coins": u_data.get("coins", 0),
+                            "purchased_frames": u_data.get("purchased_frames", []),
+                            "purchased_tokens": u_data.get("purchased_tokens", []),
+                            "purchased_dice": u_data.get("purchased_dice", []),
+                            "purchased_trails": u_data.get("purchased_trails", []),
+                            "purchased_effects": u_data.get("purchased_effects", []),
+                            "equipped_frame": u_data.get("equipped_frame", "default"),
+                            "equipped_token": u_data.get("equipped_token", "default"),
+                            "equipped_dice": u_data.get("equipped_dice", "default"),
+                            "equipped_trail": u_data.get("equipped_trail", "default"),
+                            "equipped_effect": u_data.get("equipped_effect", "default"),
+                            "is_admin": tg_id_str in [str(a) for a in bot.load_config().get("admins", ["670845978"])]
+                        }))
+
             elif msg_type == "get_invoice":
                 tg_id = data.get("tg_id")
                 package = data.get("package")
                 
-                # Стоимость пакетов
+                # Стоимость пакетов (удешевленные цены)
                 PACK_VALUES = {
-                    "pack_50": {"title": "50 Моно-Коїнів 🪙", "amount": 50, "coins": 50},
-                    "pack_120": {"title": "120 Моно-Коїнів 🪙", "amount": 100, "coins": 120},
-                    "pack_300": {"title": "300 Моно-Коїнів 🪙", "amount": 200, "coins": 300}
+                    "pack_50": {"title": "50 Моно-Коїнів 🪙", "amount": 25, "coins": 50},
+                    "pack_120": {"title": "120 Моно-Коїнів 🪙", "amount": 50, "coins": 120},
+                    "pack_300": {"title": "300 Моно-Коїнів 🪙", "amount": 100, "coins": 300}
                 }
                 
                 if tg_id and package in PACK_VALUES:
@@ -264,7 +373,7 @@ async def handle_connection(websocket):
                     token = bot.load_config().get("telegram_token")
                     
                     payload = f"{package}_{tg_id}"
-                    desc = f"Пакет монет для придбання унікальних анімованих рамок профілю в грі Монополія Україна."
+                    desc = f"Пакет монет для придбання унікальних преміум-елементів кастомізації у грі Монополія Україна."
                     
                     invoice_link = bot.create_invoice_link(token, pack["title"], desc, payload, pack["amount"])
                     if invoice_link:
@@ -309,7 +418,19 @@ async def handle_connection(websocket):
                         if "user_data" not in db:
                             db["user_data"] = {}
                         if target_id_str not in db["user_data"]:
-                            db["user_data"][target_id_str] = {"coins": 0, "purchased_frames": []}
+                            db["user_data"][target_id_str] = {
+                                "coins": 0,
+                                "purchased_frames": [],
+                                "purchased_tokens": [],
+                                "purchased_dice": [],
+                                "purchased_trails": [],
+                                "purchased_effects": [],
+                                "equipped_frame": "default",
+                                "equipped_token": "default",
+                                "equipped_dice": "default",
+                                "equipped_trail": "default",
+                                "equipped_effect": "default"
+                            }
                         db["user_data"][target_id_str]["coins"] = coins_val
                         
                     if bot.update_db(update_target_coins):
@@ -326,7 +447,16 @@ async def handle_connection(websocket):
                                                     "type": "profile_data",
                                                     "coins": u_data.get("coins", 0),
                                                     "purchased_frames": u_data.get("purchased_frames", []),
-                                                    "is_admin": target_id_str in [str(a) for a in config.get("admins", ["dmitriykachan"])]
+                                                    "purchased_tokens": u_data.get("purchased_tokens", []),
+                                                    "purchased_dice": u_data.get("purchased_dice", []),
+                                                    "purchased_trails": u_data.get("purchased_trails", []),
+                                                    "purchased_effects": u_data.get("purchased_effects", []),
+                                                    "equipped_frame": u_data.get("equipped_frame", "default"),
+                                                    "equipped_token": u_data.get("equipped_token", "default"),
+                                                    "equipped_dice": u_data.get("equipped_dice", "default"),
+                                                    "equipped_trail": u_data.get("equipped_trail", "default"),
+                                                    "equipped_effect": u_data.get("equipped_effect", "default"),
+                                                    "is_admin": target_id_str in [str(a) for a in config.get("admins", ["670845978"])]
                                                 }))
                                             except Exception as e:
                                                 print(f"Error syncing target: {e}")
@@ -338,15 +468,35 @@ async def handle_connection(websocket):
                                 "type": "profile_data",
                                 "coins": u_data.get("coins", 0),
                                 "purchased_frames": u_data.get("purchased_frames", []),
+                                "purchased_tokens": u_data.get("purchased_tokens", []),
+                                "purchased_dice": u_data.get("purchased_dice", []),
+                                "purchased_trails": u_data.get("purchased_trails", []),
+                                "purchased_effects": u_data.get("purchased_effects", []),
+                                "equipped_frame": u_data.get("equipped_frame", "default"),
+                                "equipped_token": u_data.get("equipped_token", "default"),
+                                "equipped_dice": u_data.get("equipped_dice", "default"),
+                                "equipped_trail": u_data.get("equipped_trail", "default"),
+                                "equipped_effect": u_data.get("equipped_effect", "default"),
                                 "is_admin": True,
                                 "debug_db_raw": json.dumps(db.get("user_data", {}).get(target_id_str, {})),
                                 "debug_db_success": "True"
                             }))
                         else:
+                            db = bot.db_load()
+                            admin_wallet = db.get("user_data", {}).get(str(admin_tg_id), {})
                             await websocket.send(json.dumps({
                                 "type": "profile_data",
-                                "coins": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("coins", 0),
-                                "purchased_frames": bot.db_load().get("user_data", {}).get(str(admin_tg_id), {}).get("purchased_frames", []),
+                                "coins": admin_wallet.get("coins", 0),
+                                "purchased_frames": admin_wallet.get("purchased_frames", []),
+                                "purchased_tokens": admin_wallet.get("purchased_tokens", []),
+                                "purchased_dice": admin_wallet.get("purchased_dice", []),
+                                "purchased_trails": admin_wallet.get("purchased_trails", []),
+                                "purchased_effects": admin_wallet.get("purchased_effects", []),
+                                "equipped_frame": admin_wallet.get("equipped_frame", "default"),
+                                "equipped_token": admin_wallet.get("equipped_token", "default"),
+                                "equipped_dice": admin_wallet.get("equipped_dice", "default"),
+                                "equipped_trail": admin_wallet.get("equipped_trail", "default"),
+                                "equipped_effect": admin_wallet.get("equipped_effect", "default"),
                                 "is_admin": True,
                                 "debug_db_success": "False_non_matching"
                             }))

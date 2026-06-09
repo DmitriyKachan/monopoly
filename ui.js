@@ -197,6 +197,13 @@ export function renderBoard(gameState, onCellClick) {
     updatePlayerTokens(gameState);
 }
 
+const TOKEN_EMOJIS = {
+    'patron': '🐶',
+    'crown': '👑',
+    'tractor': '🚜',
+    'cat': '🐱'
+};
+
 // Update tokens positions
 export function updatePlayerTokens(gameState) {
     // Clear all token nodes
@@ -210,7 +217,10 @@ export function updatePlayerTokens(gameState) {
             const tokenEl = document.createElement('div');
             tokenEl.className = `token p-color-${player.id}`;
             
-
+            if (player.token && player.token !== 'default') {
+                tokenEl.classList.add(`token-${player.token}`);
+                tokenEl.innerText = TOKEN_EMOJIS[player.token] || '';
+            }
             
             tokenEl.id = `player-token-${player.id}`;
             container.appendChild(tokenEl);
@@ -255,7 +265,7 @@ export function animatePlayerMovement(gameState, playerId, fromPos, steps, onCom
 }
 
 // Animate dice rolling faces
-export function animateDiceRoll(d1, d2, callback) {
+export function animateDiceRoll(d1, d2, callback, diceSkin = 'default', trailSkin = 'default') {
     const die1 = document.getElementById('die-1');
     const die2 = document.getElementById('die-2');
     const sumEl = document.getElementById('dice-sum-display');
@@ -263,6 +273,16 @@ export function animateDiceRoll(d1, d2, callback) {
     // Clear previous skins
     die1.className = 'die';
     die2.className = 'die';
+
+    if (diceSkin && diceSkin !== 'default') {
+        die1.classList.add(`die-${diceSkin}`);
+        die2.classList.add(`die-${diceSkin}`);
+    }
+
+    if (trailSkin && trailSkin !== 'default') {
+        die1.classList.add(`trail-${trailSkin}`);
+        die2.classList.add(`trail-${trailSkin}`);
+    }
 
     die1.classList.add('rolling');
     die2.classList.add('rolling');
@@ -566,7 +586,7 @@ export function showChanceModal(cardText, onConfirm) {
 
 
 // Display End game screen leaderboard modal
-export function showGameOverModal(rankings, onExit) {
+export function showGameOverModal(rankings, onExit, winnerEffect = 'default') {
     let rowsHtml = `
         <div class="rules-content" style="padding: 0;">
             <div class="rule-card" style="background: rgba(16, 185, 129, 0.1); border-color: var(--color-success); margin-bottom: 1rem; text-align: center;">
@@ -594,13 +614,13 @@ export function showGameOverModal(rankings, onExit) {
     `;
 
     showModal("Гру Завершено!", rowsHtml, [{ text: "Головне Меню", class: "btn-primary", onClick: onExit }]);
-    triggerConfetti(); // Confetti on game win!
+    triggerConfetti(winnerEffect); // Confetti on game win!
 }
 
 // ==========================================================================
 // CONFETTI CELEBRATION ENGINE
 // ==========================================================================
-export function triggerConfetti() {
+export function triggerConfetti(effect = 'default') {
     const canvas = document.getElementById('confetti-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -613,17 +633,27 @@ export function triggerConfetti() {
     
     // Shoot from left and right corners
     function createParticle(side) {
+        let shape = 'ribbon';
+        if (effect === 'fireworks') {
+            shape = 'firework-launch';
+        } else if (effect === 'money') {
+            shape = 'money';
+        } else if (effect === 'coins') {
+            shape = 'coin';
+        }
+
         return {
             x: side === 'left' ? 0 : canvas.width,
             y: canvas.height,
             vx: side === 'left' ? (Math.random() * 12 + 8) : -(Math.random() * 12 + 8),
-            vy: -(Math.random() * 15 + 18),
+            vy: shape === 'firework-launch' ? -(Math.random() * 10 + 20) : -(Math.random() * 15 + 18),
             r: Math.random() * 6 + 4,
             color: colors[Math.floor(Math.random() * colors.length)],
             tilt: Math.random() * 10 - 5,
             tiltAngleIncremental: Math.random() * 0.07 + 0.02,
             tiltAngle: 0,
-            gravity: 0.5
+            gravity: shape === 'firework-launch' ? 0.35 : 0.5,
+            shape: shape
         };
     }
     
@@ -648,19 +678,101 @@ export function triggerConfetti() {
         
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
+
+            if (p.shape === 'spark') {
+                p.life--;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                p.vy += p.gravity;
+                p.x += p.vx;
+                p.y += p.vy;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 40;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+
+                if (p.y > canvas.height + 20 || p.x < -20 || p.x > canvas.width + 20) {
+                    particles.splice(i, 1);
+                }
+                continue;
+            }
+
             p.tiltAngle += p.tiltAngleIncremental;
             p.vy += p.gravity;
             p.x += p.vx;
             p.y += p.vy;
             p.tilt = Math.sin(p.tiltAngle) * 15;
             
-            // Draw
-            ctx.beginPath();
-            ctx.lineWidth = p.r;
-            ctx.strokeStyle = p.color;
-            ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
-            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
-            ctx.stroke();
+            if (p.shape === 'firework-launch' && p.vy >= -2) {
+                // Explode!
+                for (let k = 0; k < 12; k++) {
+                    const angle = (k / 12) * Math.PI * 2 + Math.random() * 0.5;
+                    const speed = Math.random() * 4 + 3;
+                    particles.push({
+                        x: p.x,
+                        y: p.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed - 2,
+                        r: Math.random() * 3 + 2,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        gravity: 0.15,
+                        shape: 'spark',
+                        life: 40
+                    });
+                }
+                particles.splice(i, 1);
+                continue;
+            }
+
+            if (p.shape === 'money') {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.tiltAngle);
+                ctx.fillStyle = '#22c55e'; // green bill
+                ctx.strokeStyle = '#15803d';
+                ctx.lineWidth = 1;
+                ctx.fillRect(-p.r * 1.5, -p.r * 0.75, p.r * 3, p.r * 1.5);
+                ctx.strokeRect(-p.r * 1.5, -p.r * 0.75, p.r * 3, p.r * 1.5);
+                ctx.fillStyle = '#166534';
+                ctx.font = `bold ${p.r}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('₴', 0, 0);
+                ctx.restore();
+            } else if (p.shape === 'coin') {
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.tiltAngle);
+                const grad = ctx.createRadialGradient(-2, -2, 0, 0, 0, p.r);
+                grad.addColorStop(0, '#ffe259');
+                grad.addColorStop(1, '#ffa751');
+                ctx.fillStyle = grad;
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, p.r * 0.6, 0, Math.PI * 2);
+                ctx.strokeStyle = '#b45309';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+                ctx.restore();
+            } else {
+                ctx.beginPath();
+                ctx.lineWidth = p.r;
+                ctx.strokeStyle = p.color;
+                ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+                ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+                ctx.stroke();
+            }
             
             // Remove particles that go off-screen
             if (p.y > canvas.height + 20 || p.x < -20 || p.x > canvas.width + 20) {

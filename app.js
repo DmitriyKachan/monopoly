@@ -10,7 +10,23 @@ import { MultiplayerManager } from './multiplayer.js';
 let game = new GameState();
 let isMultiplayerGame = false;
 const mp = new MultiplayerManager();
-let userProfile = { name: "Гравець", username: "guest", avatar: "assets/cossack_tycoon.png", frame: null, stats: { games: 0, wins: 0 }, coins: 0, purchasedFrames: [] };
+let userProfile = {
+    name: "Гравець",
+    username: "guest",
+    avatar: "assets/cossack_tycoon.png",
+    frame: null,
+    token: null,
+    dice: null,
+    trail: null,
+    effect: null,
+    stats: { games: 0, wins: 0 },
+    coins: 0,
+    purchasedFrames: [],
+    purchasedTokens: [],
+    purchasedDice: [],
+    purchasedTrails: [],
+    purchasedEffects: []
+};
 
 const BOT_USERNAME = "queuecomfybot";
 const MINI_APP_SHORT_NAME = "play"; // Замените на короткое имя (Short Name) вашего Mini App в BotFather (например, "play" или "app") для мгновенного входа без кнопки Старт
@@ -35,7 +51,16 @@ if (urlParams.has('purchased_frames')) {
 // Setup premium store callbacks
 mp.onProfileDataCallback = (data) => {
     userProfile.coins = data.coins;
-    userProfile.purchasedFrames = data.purchased_frames;
+    userProfile.purchasedFrames = data.purchased_frames || [];
+    userProfile.purchasedTokens = data.purchased_tokens || [];
+    userProfile.purchasedDice = data.purchased_dice || [];
+    userProfile.purchasedTrails = data.purchased_trails || [];
+    userProfile.purchasedEffects = data.purchased_effects || [];
+    userProfile.frame = data.equipped_frame || 'default';
+    userProfile.token = data.equipped_token || 'default';
+    userProfile.dice = data.equipped_dice || 'default';
+    userProfile.trail = data.equipped_trail || 'default';
+    userProfile.effect = data.equipped_effect || 'default';
     userProfile.isAdmin = data.is_admin || false;
     
     // Toggle admin panel button visibility in Cabinet tab!
@@ -76,6 +101,46 @@ mp.onBuyFrameSuccessCallback = (data) => {
     syncDonateShop();
     syncProfileTab();
     showModal("Успішна покупка! 🎉", "<p>Ви придбали та одягли рамку!</p>", [
+        { text: "Клас!", class: "btn-primary" }
+    ]);
+};
+
+mp.onBuyItemSuccessCallback = (data) => {
+    triggerConfetti();
+    userProfile.coins = data.coins;
+    const category = data.category; // 'frame', 'token', 'dice', 'trail', 'effect'
+    const itemId = data.item_id;
+    
+    if (category === 'frame') {
+        if (!userProfile.purchasedFrames.includes(itemId)) userProfile.purchasedFrames.push(itemId);
+        userProfile.frame = itemId;
+    } else if (category === 'token') {
+        if (!userProfile.purchasedTokens.includes(itemId)) userProfile.purchasedTokens.push(itemId);
+        userProfile.token = itemId;
+    } else if (category === 'dice') {
+        if (!userProfile.purchasedDice.includes(itemId)) userProfile.purchasedDice.push(itemId);
+        userProfile.dice = itemId;
+    } else if (category === 'trail') {
+        if (!userProfile.purchasedTrails.includes(itemId)) userProfile.purchasedTrails.push(itemId);
+        userProfile.trail = itemId;
+    } else if (category === 'effect') {
+        if (!userProfile.purchasedEffects.includes(itemId)) userProfile.purchasedEffects.push(itemId);
+        userProfile.effect = itemId;
+    }
+    
+    localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+    updateUserAvatarFrames();
+    syncDonateShop();
+    syncProfileTab();
+    
+    let catText = "елемент";
+    if (category === 'frame') catText = "рамку";
+    else if (category === 'token') catText = "фішку";
+    else if (category === 'dice') catText = "кубик";
+    else if (category === 'trail') catText = "шлейф";
+    else if (category === 'effect') catText = "ефект перемоги";
+
+    showModal("Успішна покупка! 🎉", `<p>Ви придбали та одягли ${catText}!</p>`, [
         { text: "Клас!", class: "btn-primary" }
     ]);
 };
@@ -191,6 +256,15 @@ if (savedProfile) {
         userProfile.username = parsed.username || userProfile.username;
         userProfile.avatar = parsed.avatar || userProfile.avatar;
         userProfile.frame = parsed.frame || null;
+        userProfile.token = parsed.token || null;
+        userProfile.dice = parsed.dice || null;
+        userProfile.trail = parsed.trail || null;
+        userProfile.effect = parsed.effect || null;
+        userProfile.purchasedFrames = parsed.purchasedFrames || [];
+        userProfile.purchasedTokens = parsed.purchasedTokens || [];
+        userProfile.purchasedDice = parsed.purchasedDice || [];
+        userProfile.purchasedTrails = parsed.purchasedTrails || [];
+        userProfile.purchasedEffects = parsed.purchasedEffects || [];
         userProfile.stats = parsed.stats || { games: 0, wins: 0 };
     } catch (e) {
         console.error("Error parsing saved profile", e);
@@ -206,7 +280,14 @@ if (tg && tg.initDataUnsafe?.user) {
 }
 
 function getSyncedAvatar() {
-    return userProfile.avatar + (userProfile.frame ? '|' + userProfile.frame : '');
+    return [
+        userProfile.avatar,
+        userProfile.frame || 'default',
+        userProfile.token || 'default',
+        userProfile.dice || 'default',
+        userProfile.trail || 'default',
+        userProfile.effect || 'default'
+    ].join('|');
 }
 
 function updateUserAvatarFrames() {
@@ -784,10 +865,18 @@ function startNewGame(playerList) {
     playerList.forEach((p, idx) => {
         const parts = (p.avatar || '').split('|');
         const avatarUrl = parts[0] || 'assets/cossack_tycoon.png';
-        const frame = parts[1] || null;
+        const frame = (parts[1] && parts[1] !== 'default') ? parts[1] : null;
+        const token = (parts[2] && parts[2] !== 'default') ? parts[2] : null;
+        const dice = (parts[3] && parts[3] !== 'default') ? parts[3] : null;
+        const trail = (parts[4] && parts[4] !== 'default') ? parts[4] : null;
+        const effect = (parts[5] && parts[5] !== 'default') ? parts[5] : null;
 
         const addedPlayer = game.addPlayer(p.name, `p-color-${idx}`, avatarUrl, p.isBot || false);
-        addedPlayer.frame = frame; // Expose frame inside the game state!
+        addedPlayer.frame = frame;
+        addedPlayer.token = token;
+        addedPlayer.dice = dice;
+        addedPlayer.trail = trail;
+        addedPlayer.effect = effect;
         if (p.style) {
             addedPlayer.style = p.style;
         } else if (p.isBot) {
@@ -1672,11 +1761,11 @@ function handleUserRoll() {
                         animateDiceRoll(rollResult.d1, rollResult.d2, () => {
                             updatePlayerTokens(game);
                             resolveLandingSpace(activePlayer.id, activePlayer.position, rollResult.sum);
-                        });
+                        }, activePlayer.dice, activePlayer.trail);
                     } else {
                         animateDiceRoll(rollResult.d1, rollResult.d2, () => {
                             enableNextTurnButton();
-                        });
+                        }, activePlayer.dice, activePlayer.trail);
                     }
                 }
             }
@@ -1712,7 +1801,7 @@ function handleUserRoll() {
                 updateGameLog(game);
                 const endTurnBtn = document.getElementById('btn-end-turn');
                 endTurnBtn.disabled = false;
-            });
+            }, activePlayer.dice, activePlayer.trail);
             return;
         } else {
             game.rolledDouble = true;
@@ -1731,7 +1820,7 @@ function handleUserRoll() {
             renderPlayersHUD(game);
             resolveLandingSpace(activePlayer.id, activePlayer.position, sum);
         });
-    });
+    }, activePlayer.dice, activePlayer.trail);
 }
 
 // Landing space checker and action triggers
@@ -2090,11 +2179,11 @@ function runBotTurn() {
                 animateDiceRoll(rollResult.d1, rollResult.d2, () => {
                     updatePlayerTokens(game);
                     resolveBotLanding(bot.id, bot.position, rollResult.sum);
-                });
+                }, bot.dice, bot.trail);
             } else {
                 animateDiceRoll(rollResult.d1, rollResult.d2, () => {
                     setTimeout(executeBotEndTurn, 1500);
-                });
+                }, bot.dice, bot.trail);
             }
         }
         return;
@@ -2125,7 +2214,7 @@ function executeBotRoll() {
                 renderPlayersHUD(game);
                 updateGameLog(game);
                 setTimeout(executeBotEndTurn, 1500);
-            });
+            }, bot.dice, bot.trail);
             return;
         } else {
             game.rolledDouble = true;
@@ -2143,7 +2232,7 @@ function executeBotRoll() {
             renderPlayersHUD(game);
             resolveBotLanding(bot.id, bot.position, sum);
         });
-    });
+    }, bot.dice, bot.trail);
 }
 
 function resolveBotLanding(botId, spaceId, diceSum) {
@@ -2335,7 +2424,7 @@ function handleRemoteAction(action) {
                         updatePlayerTokens(game);
                         renderPlayersHUD(game);
                         updateGameLog(game);
-                    });
+                    }, player.dice, player.trail);
                     break;
                 } else {
                     game.rolledDouble = true;
@@ -2351,7 +2440,7 @@ function handleRemoteAction(action) {
                     renderPlayersHUD(game);
                     resolveLandingSpace(playerId, player.position, action.sum);
                 });
-            });
+            }, player.dice, player.trail);
             break;
 
         case 'buy':
@@ -2404,14 +2493,14 @@ function handleRemoteAction(action) {
                         renderPlayersHUD(game);
                         updateGameLog(game);
                         resolveLandingSpace(playerId, player.position, res.sum);
-                    });
+                    }, player.dice, player.trail);
                 } else {
                     player.jailTurns++;
                     game.log(`${player.name} кинув кубики (${res.d1}:${res.d2}) та не викинув дубль. Залишається в тюрмі`, 'system');
                     animateDiceRoll(res.d1, res.d2, () => {
                         renderPlayersHUD(game);
                         updateGameLog(game);
-                    });
+                    }, player.dice, player.trail);
                 }
             }
             break;
@@ -2618,7 +2707,12 @@ function recordGameResult(rankings) {
 
 function triggerGameOver(rankings) {
     recordGameResult(rankings);
-    showGameOverModal(rankings, () => switchScreen('screen-menu'));
+    
+    const winnerName = rankings[0] ? rankings[0].name : '';
+    const winnerPlayer = game.players.find(p => p.name === winnerName);
+    const winnerEffect = (winnerPlayer && winnerPlayer.effect) ? winnerPlayer.effect : 'default';
+    
+    showGameOverModal(rankings, () => switchScreen('screen-menu'), winnerEffect);
 }
 
 // ==========================================================================
@@ -2966,8 +3060,34 @@ function setupProfileCustomization() {
 // ==========================================================================
 const FRAME_ITEMS = [
     { id: "neon", name: "Неонова Аура 💎", desc: "Світиться яскравим блакитним неон-світлом", price: 100, class: "frame-neon" },
+    { id: "cyberpunk", name: "Кіберпанк Ворп ⚡️", desc: "Неоново-рожева та блакитна хай-тек рамка", price: 150, class: "frame-cyberpunk" },
+    { id: "cossack", name: "Козацька Слава 🇺🇦", desc: "Патріотичний синьо-жовтий перелив", price: 200, class: "frame-cossack" },
     { id: "gold", name: "Кібер Золото 👑", desc: "Рамка з анімованим золотим градієнтом", price: 250, class: "frame-gold" },
+    { id: "fire", name: "Пекельне Полум'я 🔥", desc: "Пульсуюче вогняне окантування", price: 300, class: "frame-fire" },
     { id: "rainbow", name: "Веселковий Рейв 🌈", desc: "Анімований перелив кольорів веселки", price: 500, class: "frame-rainbow" }
+];
+
+const TOKEN_ITEMS = [
+    { id: "tractor", name: "Аграрний Трактор 🚜", desc: "Легендарний трактор, що тягне танк", price: 150 },
+    { id: "cat", name: "Бандера-Кіт 🐱", desc: "Грізний бойовий котик", price: 200 },
+    { id: "patron", name: "Пес Патрон 🐶", desc: "Найвідоміший сапер України", price: 250 },
+    { id: "crown", name: "Корона Монополіста 👑", desc: "Символ абсолютного успіху", price: 300 }
+];
+
+const DICE_ITEMS = [
+    { id: "neon", name: "Неонові Грані 🌌", desc: "Світяться блакитним світлом у темряві", price: 250, class: "die-neon" },
+    { id: "gold", name: "Золоті Злитки 🪙", desc: "Кубики з чистого золота з чорними цятками", price: 400, class: "die-gold" }
+];
+
+const TRAIL_ITEMS = [
+    { id: "fire", name: "Вогняний Шлейф 🔥", desc: "Залишає полум'яний след при кидку", price: 150 },
+    { id: "rainbow", name: "Веселковий Слід 🌈", desc: "Кольоровий спектр при обертанні", price: 150 }
+];
+
+const EFFECT_ITEMS = [
+    { id: "fireworks", name: "Святковий Салют 🎆", desc: "Яскраві вибухи феєрверків при перемозі", price: 100 },
+    { id: "coins", name: "Золотий Дощ 🪙", desc: "Злива блискучих золотих монет", price: 120 },
+    { id: "money", name: "Грошопад 💸", desc: "Падіння купюр номіналом ₴1000", price: 150 }
 ];
 
 function ensureWsConnected(callback) {
@@ -2986,7 +3106,6 @@ window.closeLoaderModal = () => {
 };
 
 function showFrameShopModal() {
-    // Redirect to Support tab and activate Frames sub-tab
     const supportTabBtn = document.querySelector('.menu-nav-bar .nav-item[data-tab="support"]');
     if (supportTabBtn) {
         supportTabBtn.click();
@@ -3024,36 +3143,91 @@ window.buyCoinsPack = (packId) => {
     });
 };
 
-window.equipFrame = (frameId) => {
-    userProfile.frame = frameId;
+window.equipItem = (category, itemId) => {
+    let equippedKey;
+    if (category === 'frame') equippedKey = 'frame';
+    else if (category === 'token') equippedKey = 'token';
+    else if (category === 'dice') equippedKey = 'dice';
+    else if (category === 'trail') equippedKey = 'trail';
+    else if (category === 'effect') equippedKey = 'effect';
+
+    userProfile[equippedKey] = itemId;
     localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
-    updateUserAvatarFrames();
+    
+    if (category === 'frame') {
+        updateUserAvatarFrames();
+    }
+    
     syncDonateShop();
     syncProfileTab();
+
+    if (tgId) {
+        ensureWsConnected(() => {
+            mp.socket.send(JSON.stringify({
+                type: "equip_item",
+                category: category,
+                item_id: itemId || "default",
+                tg_id: tgId
+            }));
+        });
+    }
 };
 
-window.purchaseFrame = (frameId) => {
-    const frame = FRAME_ITEMS.find(f => f.id === frameId);
-    if (!frame) return;
+window.purchaseItem = (category, itemId) => {
+    let price = 0;
+    if (category === 'frame') {
+        const item = FRAME_ITEMS.find(f => f.id === itemId);
+        price = item ? item.price : 0;
+    } else if (category === 'token') {
+        const item = TOKEN_ITEMS.find(t => t.id === itemId);
+        price = item ? item.price : 0;
+    } else if (category === 'dice') {
+        const item = DICE_ITEMS.find(d => d.id === itemId);
+        price = item ? item.price : 0;
+    } else if (category === 'trail') {
+        const item = TRAIL_ITEMS.find(t => t.id === itemId);
+        price = item ? item.price : 0;
+    } else if (category === 'effect') {
+        const item = EFFECT_ITEMS.find(e => e.id === itemId);
+        price = item ? item.price : 0;
+    }
 
     if (!tgId) {
         const balance = userProfile.coins || 0;
-        if (balance < frame.price) {
-            alert(`Недостатньо Моно-Коїнів! Потрібно: 🪙${frame.price}, у вас: 🪙${balance}`);
+        if (balance < price) {
+            alert(`Недостатньо Моно-Коїнів! Потрібно: 🪙${price}, у вас: 🪙${balance}`);
             return;
         }
-        userProfile.coins -= frame.price;
-        if (!userProfile.purchasedFrames) userProfile.purchasedFrames = [];
-        if (!userProfile.purchasedFrames.includes(frameId)) {
-            userProfile.purchasedFrames.push(frameId);
+        userProfile.coins -= price;
+        
+        let purchasedListKey;
+        let equippedKey;
+        if (category === 'frame') { purchasedListKey = 'purchasedFrames'; equippedKey = 'frame'; }
+        else if (category === 'token') { purchasedListKey = 'purchasedTokens'; equippedKey = 'token'; }
+        else if (category === 'dice') { purchasedListKey = 'purchasedDice'; equippedKey = 'dice'; }
+        else if (category === 'trail') { purchasedListKey = 'purchasedTrails'; equippedKey = 'trail'; }
+        else if (category === 'effect') { purchasedListKey = 'purchasedEffects'; equippedKey = 'effect'; }
+        
+        if (!userProfile[purchasedListKey]) userProfile[purchasedListKey] = [];
+        if (!userProfile[purchasedListKey].includes(itemId)) {
+            userProfile[purchasedListKey].push(itemId);
         }
-        userProfile.frame = frameId;
+        userProfile[equippedKey] = itemId;
+        
         localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
         triggerConfetti();
         updateUserAvatarFrames();
         syncDonateShop();
         syncProfileTab();
-        showModal("Успішна покупка! 🎉", "<p>Ви придбали та одягли рамку!</p>", [
+        
+        let catText = "елемент";
+        if (category === 'frame') catText = "рамку";
+        else if (category === 'token') catText = "фішку";
+        else if (category === 'dice') catText = "кубик";
+        else if (category === 'trail') catText = "шлейф";
+        else if (category === 'effect') catText = "ефект перемоги";
+
+        showModal("Успішна покупка! 🎉", `<p>Ви придбали та одягли ${catText}!</p>`, [
             { text: "Клас!", class: "btn-primary" }
         ]);
         return;
@@ -3061,52 +3235,110 @@ window.purchaseFrame = (frameId) => {
 
     ensureWsConnected(() => {
         mp.socket.send(JSON.stringify({
-            type: "buy_frame",
-            frame_id: frameId,
+            type: "buy_item",
+            category: category,
+            item_id: itemId,
             tg_id: tgId
         }));
     });
 };
 
+// Legacy Wrappers
+window.purchaseFrame = (frameId) => window.purchaseItem('frame', frameId);
+window.equipFrame = (frameId) => window.equipItem('frame', frameId || 'default');
+
 // Dynamic Donate/Support Shop Synchronizer
 function syncDonateShop() {
     const coinsEl = document.getElementById('donate-coins-balance');
-    const framesEl = document.getElementById('donate-frames-balance');
     const balance = userProfile.coins || 0;
     
     if (coinsEl) coinsEl.innerText = `🪙 ${balance}`;
-    if (framesEl) framesEl.innerText = `🪙 ${balance}`;
     
-    renderDonateFramesList();
+    renderDonateCategoryList('frame', FRAME_ITEMS, 'donate-frames-list', 'donate-unequip-container', 'donate-frames-balance');
+    renderDonateCategoryList('token', TOKEN_ITEMS, 'donate-tokens-list', 'donate-tokens-unequip-container', 'donate-tokens-balance');
+    renderDonateDiceList();
+    renderDonateCategoryList('effect', EFFECT_ITEMS, 'donate-effects-list', 'donate-effects-unequip-container', 'donate-effects-balance');
 }
 
-function renderDonateFramesList() {
-    const listEl = document.getElementById('donate-frames-list');
+function renderDonateCategoryList(category, items, listId, unequipId, balanceId) {
+    const listEl = document.getElementById(listId);
     if (!listEl) return;
     
-    let purchased = userProfile.purchasedFrames || [];
-    let activeFrame = userProfile.frame;
+    const balanceEl = document.getElementById(balanceId);
+    if (balanceEl) balanceEl.innerText = `🪙 ${userProfile.coins || 0}`;
+
+    let purchased = [];
+    let equipped = 'default';
     
+    if (category === 'frame') { purchased = userProfile.purchasedFrames || []; equipped = userProfile.frame; }
+    else if (category === 'token') { purchased = userProfile.purchasedTokens || []; equipped = userProfile.token; }
+    else if (category === 'dice') { purchased = userProfile.purchasedDice || []; equipped = userProfile.dice; }
+    else if (category === 'trail') { purchased = userProfile.purchasedTrails || []; equipped = userProfile.trail; }
+    else if (category === 'effect') { purchased = userProfile.purchasedEffects || []; equipped = userProfile.effect; }
+
+    equipped = equipped || 'default';
+
     let html = '';
-    FRAME_ITEMS.forEach(item => {
+    items.forEach(item => {
         const isPurchased = purchased.includes(item.id);
-        const isActive = activeFrame === item.id;
+        const isActive = equipped === item.id;
         
         let actionBtnHtml = '';
         if (isActive) {
             actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;">Екіпіровано</button>`;
         } else if (isPurchased) {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.equipFrame('${item.id}')">Вдягти</button>`;
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.equipItem('${category}', '${item.id}')">Вдягти</button>`;
         } else {
-            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.purchaseFrame('${item.id}')">Купити 🪙${item.price}</button>`;
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.purchaseItem('${category}', '${item.id}')">Купити 🪙${item.price}</button>`;
+        }
+
+        let previewHtml = '';
+        if (category === 'frame') {
+            previewHtml = `
+                <div class="avatar-container ${item.class || 'frame-' + item.id}" style="width: 46px; height: 46px; flex-shrink: 0;">
+                    <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
+                </div>
+            `;
+        } else if (category === 'token') {
+            const emojis = { patron: '🐶', crown: '👑', tractor: '🚜', cat: '🐱' };
+            previewHtml = `
+                <div class="token token-${item.id}" style="width: 32px; height: 32px; font-size: 16px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); flex-shrink: 0; color: white;">
+                    ${emojis[item.id] || ''}
+                </div>
+            `;
+        } else if (category === 'dice') {
+            previewHtml = `
+                <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                    <div class="die ${item.class || 'die-' + item.id}" style="width: 28px; height: 28px; padding: 2px; font-size: 8px; border-radius: 6px;">
+                        <span class="dot" style="width: 4px; height: 4px;"></span>
+                        <span></span><span></span><span></span>
+                        <span class="dot" style="width: 4px; height: 4px;"></span>
+                        <span></span><span></span><span></span>
+                        <span class="dot" style="width: 4px; height: 4px;"></span>
+                    </div>
+                </div>
+            `;
+        } else if (category === 'trail') {
+            const glowColor = item.id === 'fire' ? 'rgba(239, 68, 68, 0.6)' : 'rgba(127, 0, 255, 0.6)';
+            previewHtml = `
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-glass); box-shadow: 0 0 10px ${glowColor}; flex-shrink: 0;">
+                    <i class="fa-solid fa-wind" style="color: ${item.id === 'fire' ? '#ef4444' : '#a855f7'}; font-size: 14px;"></i>
+                </div>
+            `;
+        } else if (category === 'effect') {
+            const icon = item.id === 'fireworks' ? 'fa-wand-magic-sparkles' : (item.id === 'coins' ? 'fa-coins' : 'fa-money-bill-wave');
+            const color = item.id === 'fireworks' ? '#ec4899' : (item.id === 'coins' ? '#eab308' : '#22c55e');
+            previewHtml = `
+                <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-glass); flex-shrink: 0;">
+                    <i class="fa-solid ${icon}" style="color: ${color}; font-size: 14px;"></i>
+                </div>
+            `;
         }
 
         html += `
-            <div class="shop-card-item ${isActive ? 'active-frame' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; border: 1px solid var(--border-glass);">
+            <div class="shop-card-item ${isActive ? 'active-item' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 0.5rem;">
                 <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
-                    <div class="avatar-container ${item.class}" style="width: 46px; height: 46px; flex-shrink: 0;">
-                        <img src="${userProfile.avatar}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='assets/cossack_tycoon.png'">
-                    </div>
+                    ${previewHtml}
                     <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
                         <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
                         <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
@@ -3120,10 +3352,120 @@ function renderDonateFramesList() {
     });
     listEl.innerHTML = html;
     
-    // Unequip container
-    const unequipEl = document.getElementById('donate-unequip-container');
+    const unequipEl = document.getElementById(unequipId);
     if (unequipEl) {
-        unequipEl.innerHTML = activeFrame ? `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px;" onclick="window.equipFrame(null)">Зняти рамку ❌</button>` : '';
+        unequipEl.innerHTML = (equipped && equipped !== 'default') ? `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px;" onclick="window.equipItem('${category}', 'default')">Зняти кастомізацію ❌</button>` : '';
+    }
+}
+
+function renderDonateDiceList() {
+    const listEl = document.getElementById('donate-dice-list');
+    if (!listEl) return;
+    
+    const balanceEl = document.getElementById('donate-dice-balance');
+    if (balanceEl) balanceEl.innerText = `🪙 ${userProfile.coins || 0}`;
+
+    let html = '';
+    
+    html += `<div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--color-primary); margin-top: 0.25rem; margin-bottom: 0.25rem; letter-spacing: 0.05em; text-align: left;">Скіни кубиків</div>`;
+    
+    let purchasedDice = userProfile.purchasedDice || [];
+    let equippedDice = userProfile.dice || 'default';
+    
+    DICE_ITEMS.forEach(item => {
+        const isPurchased = purchasedDice.includes(item.id);
+        const isActive = equippedDice === item.id;
+        
+        let actionBtnHtml = '';
+        if (isActive) {
+            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;">Екіпіровано</button>`;
+        } else if (isPurchased) {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.equipItem('dice', '${item.id}')">Вдягти</button>`;
+        } else {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.purchaseItem('dice', '${item.id}')">Купити 🪙${item.price}</button>`;
+        }
+
+        const previewHtml = `
+            <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                <div class="die ${item.class || 'die-' + item.id}" style="width: 28px; height: 28px; padding: 2px; font-size: 8px; border-radius: 6px;">
+                    <span class="dot" style="width: 4px; height: 4px;"></span>
+                    <span></span><span></span><span></span>
+                    <span class="dot" style="width: 4px; height: 4px;"></span>
+                    <span></span><span></span><span></span>
+                    <span class="dot" style="width: 4px; height: 4px;"></span>
+                </div>
+            </div>
+        `;
+
+        html += `
+            <div class="shop-card-item ${isActive ? 'active-item' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 0.5rem;">
+                <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
+                    ${previewHtml}
+                    <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
+                        <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
+                        <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
+                    </div>
+                </div>
+                <div>
+                    ${actionBtnHtml}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += `<div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--color-primary); margin-top: 1rem; margin-bottom: 0.25rem; letter-spacing: 0.05em; text-align: left;">Шлейфи кидка</div>`;
+    
+    let purchasedTrails = userProfile.purchasedTrails || [];
+    let equippedTrail = userProfile.trail || 'default';
+    
+    TRAIL_ITEMS.forEach(item => {
+        const isPurchased = purchasedTrails.includes(item.id);
+        const isActive = equippedTrail === item.id;
+        
+        let actionBtnHtml = '';
+        if (isActive) {
+            actionBtnHtml = `<button class="btn btn-secondary btn-shop-action" style="background: transparent; border: 1.5px solid var(--color-success); color: var(--color-success); cursor: default; pointer-events: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;">Екіпіровано</button>`;
+        } else if (isPurchased) {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.equipItem('trail', '${item.id}')">Вдягти</button>`;
+        } else {
+            actionBtnHtml = `<button class="btn btn-primary btn-shop-action" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: #ffffff; padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 8px;" onclick="window.purchaseItem('trail', '${item.id}')">Купити 🪙${item.price}</button>`;
+        }
+
+        const glowColor = item.id === 'fire' ? 'rgba(239, 68, 68, 0.6)' : 'rgba(127, 0, 255, 0.6)';
+        const previewHtml = `
+            <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-glass); box-shadow: 0 0 10px ${glowColor}; flex-shrink: 0;">
+                <i class="fa-solid fa-wind" style="color: ${item.id === 'fire' ? '#ef4444' : '#a855f7'}; font-size: 14px;"></i>
+            </div>
+        `;
+
+        html += `
+            <div class="shop-card-item ${isActive ? 'active-item' : ''}" style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); padding: 0.6rem; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 0.5rem;">
+                <div class="shop-card-left" style="display: flex; align-items: center; gap: 0.75rem;">
+                    ${previewHtml}
+                    <div class="shop-frame-info" style="display: flex; flex-direction: column; text-align: left;">
+                        <span class="shop-frame-name" style="font-weight: 700; font-size: 0.85rem;">${item.name}</span>
+                        <span class="shop-frame-desc" style="font-size: 0.7rem; color: var(--text-secondary);">${item.desc}</span>
+                    </div>
+                </div>
+                <div>
+                    ${actionBtnHtml}
+                </div>
+            </div>
+        `;
+    });
+    
+    listEl.innerHTML = html;
+    
+    const unequipEl = document.getElementById('donate-dice-unequip-container');
+    if (unequipEl) {
+        let buttonsHtml = '';
+        if (equippedDice && equippedDice !== 'default') {
+            buttonsHtml += `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px; margin-bottom: 0.5rem;" onclick="window.equipItem('dice', 'default')">Зняти кубики ❌</button>`;
+        }
+        if (equippedTrail && equippedTrail !== 'default') {
+            buttonsHtml += `<button class="btn btn-secondary" style="width: 100%; padding: 0.5rem; font-size: 0.8rem; border-radius: 10px;" onclick="window.equipItem('trail', 'default')">Зняти шлейф ❌</button>`;
+        }
+        unequipEl.innerHTML = buttonsHtml;
     }
 }
 
