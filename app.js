@@ -3491,19 +3491,70 @@ function showAdminPanelModal() {
                     </button>
                 </div>
 
-                <div>
-                    <label style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 0.3rem;">Кількість Моно-Коїнів:</label>
-                    <input type="number" id="admin-coins-value" placeholder="Наприклад: 500" value="100" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                <div style="border-top: 1px solid var(--border-glass); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <h5 style="margin: 0; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;">Дія 1: Нарахування Моно-Коїнів</h5>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="number" id="admin-coins-value" placeholder="Коїни" value="100" style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                        <button class="btn btn-primary" id="btn-admin-submit-coins" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); border: none; color: white; padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 6px;">
+                            Нарахувати 🪙
+                        </button>
+                    </div>
                 </div>
 
-                <button class="btn btn-primary" id="btn-admin-submit-coins" style="margin-top: 0.5rem; background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); border: none; color: white;">
-                    Нарахувати коїни 🪙
-                </button>
+                <div style="border-top: 1px solid var(--border-glass); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    <h5 style="margin: 0; font-size: 0.85rem; color: var(--text-primary); font-weight: 700;">Дія 2: Видача Фішок / Кастомізації</h5>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-secondary);">Оберіть категорію:</label>
+                        <select id="admin-grant-category" style="width: 100%; background: #0f172a; border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                            <option value="token">Фішки (🐶 👑 🚜 🐱)</option>
+                            <option value="frame">Рамки Аватарів</option>
+                            <option value="dice">Кубики</option>
+                            <option value="trail">Шлейфи</option>
+                            <option value="effect">Ефекти перемоги</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                        <label style="font-size: 0.75rem; color: var(--text-secondary);">Оберіть предмет:</label>
+                        <select id="admin-grant-item-id" style="width: 100%; background: #0f172a; border: 1px solid var(--border-glass); color: #fff; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; font-family: inherit;">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" id="btn-admin-submit-grant" style="margin-top: 0.25rem; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border: none; color: white; padding: 0.6rem; border-radius: 6px;">
+                        Видати предмет 🎁
+                    </button>
+                </div>
             </div>
         </div>
     `;
 
     showModal("Адміністрування", modalHtml, []);
+    
+    const catSelect = document.getElementById('admin-grant-category');
+    const itemSelect = document.getElementById('admin-grant-item-id');
+    
+    const populateItems = () => {
+        const cat = catSelect.value;
+        let items = [];
+        if (cat === 'frame') items = FRAME_ITEMS;
+        else if (cat === 'token') items = TOKEN_ITEMS;
+        else if (cat === 'dice') items = DICE_ITEMS;
+        else if (cat === 'trail') items = TRAIL_ITEMS;
+        else if (cat === 'effect') items = EFFECT_ITEMS;
+        
+        let selectHtml = '';
+        items.forEach(i => {
+            selectHtml += `<option value="${i.id}">${i.name}</option>`;
+        });
+        itemSelect.innerHTML = selectHtml;
+    };
+    
+    if (catSelect && itemSelect) {
+        catSelect.onchange = populateItems;
+        populateItems();
+    }
     
     const insertMyIdBtn = document.getElementById('btn-admin-insert-my-id');
     if (insertMyIdBtn) {
@@ -3518,6 +3569,11 @@ function showAdminPanelModal() {
     const submitCoinsBtn = document.getElementById('btn-admin-submit-coins');
     if (submitCoinsBtn) {
         submitCoinsBtn.onclick = window.adminSubmitSetCoins;
+    }
+
+    const submitGrantBtn = document.getElementById('btn-admin-submit-grant');
+    if (submitGrantBtn) {
+        submitGrantBtn.onclick = window.adminSubmitGrantItem;
     }
 }
 
@@ -3561,6 +3617,74 @@ window.adminSubmitSetCoins = () => {
         }));
 
         showModal("Запит надіслано ⚙️", `<p>Запит на нарахування <strong>🪙${coinsVal}</strong> для ID <strong>${targetId}</strong> надіслано на сервер.</p>`, [
+            { text: "Готово", class: "btn-primary", onClick: () => {
+                if (targetId === tgId) {
+                    if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {
+                        mp.socket.send(JSON.stringify({ type: "get_profile", tg_id: tgId }));
+                    }
+                }
+            }}
+        ]);
+    });
+};
+
+window.adminSubmitGrantItem = () => {
+    const targetIdInput = document.getElementById('admin-target-tg-id');
+    const categorySelect = document.getElementById('admin-grant-category');
+    const itemSelect = document.getElementById('admin-grant-item-id');
+    if (!targetIdInput || !categorySelect || !itemSelect) return;
+    
+    const targetId = targetIdInput.value.trim();
+    const category = categorySelect.value;
+    const itemId = itemSelect.value;
+    
+    if (!targetId) {
+        alert("Будь ласка, введіть Telegram ID отримувача!");
+        return;
+    }
+    if (!itemId) {
+        alert("Будь ласка, оберіть предмет для видачі!");
+        return;
+    }
+
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.protocol === 'file:';
+    
+    if (!tgId && isLocal) {
+        let purchasedListKey;
+        if (category === 'frame') purchasedListKey = 'purchasedFrames';
+        else if (category === 'token') purchasedListKey = 'purchasedTokens';
+        else if (category === 'dice') purchasedListKey = 'purchasedDice';
+        else if (category === 'trail') purchasedListKey = 'purchasedTrails';
+        else if (category === 'effect') purchasedListKey = 'purchasedEffects';
+
+        if (!userProfile[purchasedListKey]) userProfile[purchasedListKey] = [];
+        if (!userProfile[purchasedListKey].includes(itemId)) {
+            userProfile[purchasedListKey].push(itemId);
+        }
+        
+        localStorage.setItem('custom_user_profile', JSON.stringify(userProfile));
+        triggerConfetti();
+        syncDonateShop();
+        syncProfileTab();
+        
+        showModal("Оффлайн видача ✅", `<p>Предмет <strong>${itemId}</strong> (${category}) видано для вашого локального профілю.</p>`, [
+            { text: "Чудово", class: "btn-primary" }
+        ]);
+        return;
+    }
+
+    ensureWsConnected(() => {
+        mp.socket.send(JSON.stringify({
+            type: "admin_grant_item",
+            admin_tg_id: tgId,
+            target_tg_id: targetId,
+            category: category,
+            item_id: itemId
+        }));
+
+        showModal("Запит надіслано ⚙️", `<p>Запит на видачу предмета <strong>${itemId}</strong> для ID <strong>${targetId}</strong> надіслано на сервер.</p>`, [
             { text: "Готово", class: "btn-primary", onClick: () => {
                 if (targetId === tgId) {
                     if (mp.socket && mp.socket.readyState === WebSocket.OPEN) {

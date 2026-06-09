@@ -3460,6 +3460,19 @@ input:checked + .slider:before {
    SUPPORT/DONATE SUB-TABS STYLING
    ========================================================================== */
 
+.btn-shop-action {
+    width: 115px !important;
+    min-width: 115px !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 0.4rem 0.5rem !important;
+    font-size: 0.8rem !important;
+}
+
 .donate-tab-btn {
     flex: 1;
     padding: 0.55rem;

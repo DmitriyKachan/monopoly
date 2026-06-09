@@ -507,6 +507,136 @@ async def handle_connection(websocket):
                             "message": "Не вдалося зберегти зміни в базі даних."
                         }))
 
+            elif msg_type == "admin_grant_item":
+                admin_tg_id = data.get("admin_tg_id")
+                
+                is_authorized = False
+                import bot
+                try:
+                    config = bot.load_config()
+                    admins = config.get("admins", ["670845978"])
+                    if admin_tg_id and str(admin_tg_id) in [str(a) for a in admins]:
+                        is_authorized = True
+                except Exception as ex:
+                    print(f"Помилка перевірки адміна: {ex}")
+
+                if not is_authorized:
+                    await websocket.send(json.dumps({
+                        "type": "error",
+                        "message": "Помилка доступу: Ви не є адміністратором!"
+                    }))
+                    continue
+                
+                target_tg_id = data.get("target_tg_id")
+                category = data.get("category")
+                item_id = data.get("item_id")
+                
+                if target_tg_id and category in ['frame', 'token', 'dice', 'trail', 'effect'] and item_id:
+                    target_id_str = str(target_tg_id)
+                    list_key = f"purchased_{category}s"
+                    
+                    def grant_target_item(db):
+                        if "user_data" not in db:
+                            db["user_data"] = {}
+                        if target_id_str not in db["user_data"]:
+                            db["user_data"][target_id_str] = {
+                                "coins": 0,
+                                "purchased_frames": [],
+                                "purchased_tokens": [],
+                                "purchased_dice": [],
+                                "purchased_trails": [],
+                                "purchased_effects": [],
+                                "equipped_frame": "default",
+                                "equipped_token": "default",
+                                "equipped_dice": "default",
+                                "equipped_trail": "default",
+                                "equipped_effect": "default"
+                            }
+                        user_data = db["user_data"][target_id_str]
+                        
+                        # Ensure all lists exist
+                        for k in ["purchased_frames", "purchased_tokens", "purchased_dice", "purchased_trails", "purchased_effects"]:
+                            if k not in user_data:
+                                user_data[k] = []
+                                
+                        if item_id not in user_data[list_key]:
+                            user_data[list_key].append(item_id)
+                        db["user_data"][target_id_str] = user_data
+                        
+                    if bot.update_db(grant_target_item):
+                        for room_code, room in list(ROOMS.items()):
+                            if "websockets" in room:
+                                for p_idx, p in enumerate(room["players"]):
+                                    if str(p.get("tg_id")) == target_id_str:
+                                        target_ws = room["websockets"].get(p["id"])
+                                        if target_ws:
+                                            try:
+                                                db = bot.db_load()
+                                                u_data = db.get("user_data", {}).get(target_id_str, {})
+                                                await target_ws.send(json.dumps({
+                                                    "type": "profile_data",
+                                                    "coins": u_data.get("coins", 0),
+                                                    "purchased_frames": u_data.get("purchased_frames", []),
+                                                    "purchased_tokens": u_data.get("purchased_tokens", []),
+                                                    "purchased_dice": u_data.get("purchased_dice", []),
+                                                    "purchased_trails": u_data.get("purchased_trails", []),
+                                                    "purchased_effects": u_data.get("purchased_effects", []),
+                                                    "equipped_frame": u_data.get("equipped_frame", "default"),
+                                                    "equipped_token": u_data.get("equipped_token", "default"),
+                                                    "equipped_dice": u_data.get("equipped_dice", "default"),
+                                                    "equipped_trail": u_data.get("equipped_trail", "default"),
+                                                    "equipped_effect": u_data.get("equipped_effect", "default"),
+                                                    "is_admin": target_id_str in [str(a) for a in config.get("admins", ["670845978"])]
+                                                }))
+                                            except Exception as e:
+                                                print(f"Error syncing target: {e}")
+                        
+                        if str(admin_tg_id) == target_id_str:
+                            db = bot.db_load()
+                            u_data = db.get("user_data", {}).get(target_id_str, {})
+                            await websocket.send(json.dumps({
+                                "type": "profile_data",
+                                "coins": u_data.get("coins", 0),
+                                "purchased_frames": u_data.get("purchased_frames", []),
+                                "purchased_tokens": u_data.get("purchased_tokens", []),
+                                "purchased_dice": u_data.get("purchased_dice", []),
+                                "purchased_trails": u_data.get("purchased_trails", []),
+                                "purchased_effects": u_data.get("purchased_effects", []),
+                                "equipped_frame": u_data.get("equipped_frame", "default"),
+                                "equipped_token": u_data.get("equipped_token", "default"),
+                                "equipped_dice": u_data.get("equipped_dice", "default"),
+                                "equipped_trail": u_data.get("equipped_trail", "default"),
+                                "equipped_effect": u_data.get("equipped_effect", "default"),
+                                "is_admin": True,
+                                "debug_db_raw": json.dumps(db.get("user_data", {}).get(target_id_str, {})),
+                                "debug_db_success": "True"
+                            }))
+                        else:
+                            db = bot.db_load()
+                            admin_wallet = db.get("user_data", {}).get(str(admin_tg_id), {})
+                            await websocket.send(json.dumps({
+                                "type": "profile_data",
+                                "coins": admin_wallet.get("coins", 0),
+                                "purchased_frames": admin_wallet.get("purchased_frames", []),
+                                "purchased_tokens": admin_wallet.get("purchased_tokens", []),
+                                "purchased_dice": admin_wallet.get("purchased_dice", []),
+                                "purchased_trails": admin_wallet.get("purchased_trails", []),
+                                "purchased_effects": admin_wallet.get("purchased_effects", []),
+                                "equipped_frame": admin_wallet.get("equipped_frame", "default"),
+                                "equipped_token": admin_wallet.get("equipped_token", "default"),
+                                "equipped_dice": admin_wallet.get("equipped_dice", "default"),
+                                "equipped_trail": admin_wallet.get("equipped_trail", "default"),
+                                "equipped_effect": admin_wallet.get("equipped_effect", "default"),
+                                "is_admin": True,
+                                "debug_db_success": "True"
+                            }))
+                        print(f"Адміністратор {admin_tg_id} видав {category} {item_id} для {target_id_str}")
+                    else:
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": "Не вдалося зберегти зміни в базі даних."
+                        }))
+
             elif msg_type == "create":
                 # Create a new room
                 room_code = str(random.randint(1000, 9999))
